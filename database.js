@@ -13,7 +13,6 @@ const connectionPool = mysql.createPool({
 // });
 
 const getDriverDetails = (driverId, rideId) => {
-    // console.log('getDriverDetails - called--------------------------------------------------------------------------------------START');
     return new Promise((resolve, reject) => {
         let query = `SELECT u.name, u.profile_image as image, d.vehicle_number, d.rating, d.wallet_value as wallet, r.otp, r.paymentMethod, r.fare, d.qr_code as qrCode, n.token
         FROM \`driver\` as d JOIN \`users\` as u ON u.uid = d.user_id 
@@ -21,17 +20,10 @@ const getDriverDetails = (driverId, rideId) => {
         LEFT JOIN \`device_notification_data_firebase\` as n ON r.driver_id = n.specific_level_user_id
         WHERE d.uid = '${driverId}'
         AND  r.uid = '${rideId}'`;
-
-        // console.log(query);
         
         connectionPool.query(
             query,
             (err, results) => {
-                // console.log('Error : -- ');
-                // console.log(err);
-
-                // console.log(results);
-                // console.log('getDriverDetails - called--------------------------------------------------------------------------------------END');
                 return (results.length === 0) ? resolve([]) : resolve(results);
             }
         );
@@ -45,12 +37,10 @@ function getRideDetails(rideID){
     JOIN \`users\` as u ON c.user_id = u.uid
     LEFT JOIN \`device_notification_data_firebase\` as n ON r.customer_id = n.specific_level_user_id
     WHERE r.uid = '${rideID}'`;
-    // console.log(query);
     return new Promise((resolve, reject) => {
         connectionPool.query(
             query,
             (error, results) => {
-                // console.log(error);
                 return (typeof results == 'undefined') ? resolve([]) : resolve(results);
             }
         );
@@ -70,9 +60,7 @@ const updateRidePath = (rideId, waypoints, destination) => {
                 \`ride_normal\`.\`destination\` = '${destination}'                   
             WHERE
                 \`ride_normal\`.\`uid\` = '${rideId}'`,
-            (error, results) => {
-                // console.log(error);
-                // console.log(results);                
+            (error, results) => {              
                 return (results.affectedRows === 1) ? resolve(true) : resolve(false);
             }
         );

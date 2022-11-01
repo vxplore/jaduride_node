@@ -10,7 +10,7 @@ const {sendNotification} = require("./firebase-config");
 const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus} = require('./database');
 const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAGES_FRONTEND_DRIVER, CUSTOMER_PERMISSABLE_WAITING_TIME, SOCKET_THROUGH, DRIVER_PASS_TIMER_IN_SEC, PERMISSABLE_PAYMENT_METHOD, PAYMENT_STATUS} = require('./defaultValues');
 
-// const logger = require('./log');
+// const logger = require('./log'); 
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
