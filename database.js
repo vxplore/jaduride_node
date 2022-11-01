@@ -50,7 +50,7 @@ function getRideDetails(rideID){
         connectionPool.query(
             query,
             (error, results) => {
-                console.log(error);
+                // console.log(error);
                 return (typeof results == 'undefined') ? resolve([]) : resolve(results);
             }
         );
@@ -71,8 +71,8 @@ const updateRidePath = (rideId, waypoints, destination) => {
             WHERE
                 \`ride_normal\`.\`uid\` = '${rideId}'`,
             (error, results) => {
-                console.log(error);
-                console.log(results);                
+                // console.log(error);
+                // console.log(results);                
                 return (results.affectedRows === 1) ? resolve(true) : resolve(false);
             }
         );

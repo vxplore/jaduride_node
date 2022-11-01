@@ -6,19 +6,11 @@ const axios = require('axios');
 const dotenv = require("dotenv");
 const date = require('date-and-time');
 const {sendNotification} = require("./firebase-config");
-const uuid = require("uuid");
-const chalk = require('chalk');
-
-// while(1){  
-//     var randomColor = "#000000".replace(/0/g,function(){return (~~(Math.random()*16)).toString(16);});
-//     console.log(chalk.hex(randomColor).bold(uuid.v4()));    
-// }
 
 const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus} = require('./database');
-const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAGES_FRONTEND_DRIVER, customerPermissableWaitingTime, SOCKET_THROUGH, DRIVER_PASS_TIMER_IN_SEC, PERMISSABLE_PAYMENT_METHOD, PAYMENT_STATUS} = require('./defaultValues');
+const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAGES_FRONTEND_DRIVER, CUSTOMER_PERMISSABLE_WAITING_TIME, SOCKET_THROUGH, DRIVER_PASS_TIMER_IN_SEC, PERMISSABLE_PAYMENT_METHOD, PAYMENT_STATUS} = require('./defaultValues');
 
 // const logger = require('./log');
-// 
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
@@ -327,7 +319,7 @@ io.on('connection', function(socket){
                     if(setDriverIdInRideDetails(setDriverData)){
                         
                         // io.sockets.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'driver found'});
-                        console.log( chalk.red('#############---------------------------Driver found-----------------------################') );   
+                        console.log('#############---------------------------Driver found-----------------------################');   
 
                         //  !!ch!!
                         io.sockets.to([customerIdWithSocketId[resData.customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'Driver found'});
@@ -520,8 +512,8 @@ io.on('connection', function(socket){
                 let clientLocatedData = {
                     "rideStage" : RIDE_STAGES_FRONTEND_DRIVER.WAITING,
                     "waitingTime": {
-                        "min": customerPermissableWaitingTime.min,
-                        "second": customerPermissableWaitingTime.sec
+                        "min": CUSTOMER_PERMISSABLE_WAITING_TIME.min,
+                        "second": CUSTOMER_PERMISSABLE_WAITING_TIME.sec
                     }
                 };
     
@@ -579,7 +571,7 @@ io.on('connection', function(socket){
 
             if(type === 'KEY_END_TRIP'){ //when we end trip then json file move to completed folder
                 
-                console.log(chalk.bgWhite.black('congrats  - trip end.........'));
+                console.log('congrats  - trip end.........');
 
                 let oldFileNameWithPath = DIR_NAME + '/' + rideId + '.' + rideFileExtension;
                 let newFileNameWithPath = DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + rideId + '.' + rideFileExtension;
@@ -594,9 +586,9 @@ io.on('connection', function(socket){
                                 console.log(
                                     (result) 
                                         ?
-                                        chalk.green('Driver released from ride... now driver allowed to get ride')
+                                        'Driver released from ride... now driver allowed to get ride'
                                         :
-                                        chalk.red('Some error occoured to release driver from ride')
+                                        'Some error occoured to release driver from ride'
                                 );
                                 fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {            
                                     resData = JSON.parse(resData);
@@ -620,7 +612,7 @@ io.on('connection', function(socket){
     });
 
     socket.on( SOCKET_THROUGH.RECEIVED.VERIFY_OTP, (data) => {
-        console.log(chalk.bgYellow.red('called ---  verifyOtp'));
+        console.log('called ---  verifyOtp');
         console.log(data);
 
         let otp = data.otp;
@@ -658,14 +650,14 @@ io.on('connection', function(socket){
                         let driverArrivedTime = new Date(status.dateTime);
                         let rideStartTime = new Date(date.format(now, 'YYYY-MM-DD HH:mm:ss'));
                         let driverWaitingTimeInMiliSec = rideStartTime - driverArrivedTime;
-                        let totalOriginalCustomerPermissableWaitingTime = ( parseInt(customerPermissableWaitingTime.min) * 60000 ) +  ( parseInt(customerPermissableWaitingTime.sec) * 1000);
+                        let totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME = ( parseInt(CUSTOMER_PERMISSABLE_WAITING_TIME.min) * 60000 ) +  ( parseInt(CUSTOMER_PERMISSABLE_WAITING_TIME.sec) * 1000);
                         
                         let driverWaitingTime = {};
 
-                        if(driverWaitingTimeInMiliSec > totalOriginalCustomerPermissableWaitingTime){
+                        if(driverWaitingTimeInMiliSec > totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME){
                             // Waiting charges applied 
-                            console.log(totalOriginalCustomerPermissableWaitingTime);
-                            let time = (parseInt(driverWaitingTimeInMiliSec) - parseInt(totalOriginalCustomerPermissableWaitingTime) );
+                            console.log(totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME);
+                            let time = (parseInt(driverWaitingTimeInMiliSec) - parseInt(totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME) );
                             console.log('Extra time :' + time);
 
                             driverWaitingTime.extratimeInMiliSec = time;
@@ -678,7 +670,7 @@ io.on('connection', function(socket){
                 resData.rideStatus.push(rideStatusData);          
             }
 
-            console.log(chalk.red('send to driver otp verification result'));
+            console.log('send to driver otp verification result');
 
             // !!ch!! 
             io.sockets.to([ driverIdWithSocketId[driverId], driverIdWithSocketId['DRIVER_fe1ccf453534542c3a038a48_16584789911'] ]).emit( SOCKET_THROUGH.SEND.IS_OTP_VERIFIED, checkOtpResponse); 
@@ -700,16 +692,6 @@ io.on('connection', function(socket){
             fs.writeFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, resData ,(err) => {});
         });
     });
-
-    // socket.on( SOCKET_THROUGH.RECEIVED.START_RIDE, () => {
-    //     let rideStatusData = {
-    //         'rideStatus' : 'RIDE_COMPLETE',
-
-    //         'statusMsg' : 'Ride is complete, you have reached your desctination',
-    //         'rideEta' : ''
-    //     };
-    //     io.sockets.emit('rideStatus', rideStatusData); 
-    // });
 
     socket.on(SOCKET_THROUGH.RECEIVED.INITIATE_RIDE_PAYMENT, (data) => {
         // data = {

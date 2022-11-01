@@ -52,12 +52,12 @@ const RIDE_TYPE = {
 
 const RIDE_STAGES_FRONTEND_DRIVER = {
     'PICKUP' : 'STAGE_PICKUP',
-    'WAITING' : 'STAGE_WAITING',    //EXTRA CHAGES WILL BE APPLIED AS 'WAITING CHARGES' ----------------------------- PENDING
+    'WAITING' : 'STAGE_WAITING',    //EXTRA CHAGES WILL BE APPLIED AS 'WAITING CHARGES' --- PENDING
     'ONGOING' : 'STAGE_ONGOING',
     'COMPLETED' : 'STAGE_COMPLETED',
 };
 
-const customerPermissableWaitingTime = {
+const CUSTOMER_PERMISSABLE_WAITING_TIME = {
     'min' : 5,
     'sec' : 0,
 }
@@ -74,7 +74,6 @@ const SOCKET_THROUGH = {
         CANCEL_RIDE : 'cancelRide',
         ONRIDE : 'onRide',
         VERIFY_OTP : 'verifyOtp',
-        // START_RIDE : 'startRide',
         INITIATE_RIDE_PAYMENT : 'initiateRidePayment',
         COMPLETE_RIDE_PAYMENT : 'completeRidePayment',
         DISCONNECTING : 'disconnecting'
@@ -118,7 +117,7 @@ module.exports = {
     RIDE_STATUS, 
     RIDE_TYPE, 
     RIDE_STAGES_FRONTEND_DRIVER, 
-    customerPermissableWaitingTime, 
+    CUSTOMER_PERMISSABLE_WAITING_TIME, 
     DRIVER_PASS_TIMER_IN_SEC, 
     PERMISSABLE_PAYMENT_METHOD,
     PAYMENT_STATUS
