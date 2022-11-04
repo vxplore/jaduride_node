@@ -1,12 +1,20 @@
 const admin = require("firebase-admin");
 
-var serviceAccount = require("./service-account.json");
+const serviceAccount = require("./service-account.json");
+const serviceAccountDriver = require("./service-account-driver.json");
+const { APP } = require("./defaultValues");
 
-admin.initializeApp({
-  	credential: admin.credential.cert(serviceAccount),
-})
+let SERVICE_ACCOUNT = serviceAccount;
 
-const sendNotification = (token, title, body, imageUrl, extraData) => {
+const sendNotification = (token, title, body, imageUrl, extraData, APP_NAME = APP.APP_CUSTOMER) => {
+    if(APP_NAME == APP.APP_DRIVER){
+        SERVICE_ACCOUNT = serviceAccountDriver;
+    }
+
+    admin.initializeApp({
+        credential: admin.credential.cert(SERVICE_ACCOUNT),
+    });
+
     const message = {
         notification: {
             title: title,
@@ -15,7 +23,7 @@ const sendNotification = (token, title, body, imageUrl, extraData) => {
         },
         data: extraData,
         token: token
-    };
+    };    
 
     admin.messaging().send(message)
         .then((response) => {

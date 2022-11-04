@@ -14,14 +14,12 @@ const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAG
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
-    
-
     let title = 'Hallo rohit';
     let msg = 'Rohit er sir...bolche hello';
     let image = 'https://www.v-xplore.com/wp-content/uploads/2022/04/Debdutta-Panda.png';
     let action = 'click';
 
-    let token = 'cj31qOBtS8WpLZ32fEP_aC:APA91bG5NBlgMcHPDU-9zOHzLWe9_tWH-3wk9ZyV2U2_1DBGpeq1U93fiKuJOiYC2hpfLP9f4mlyonkMcyDK0bHahfIu5xcF8ZgWgPBZ7F51aYK3xYng8sRWU9D58k1FuEH76wmIaYFo';
+    let token = 'fmLdLh1SQRqIMiTnyCJcRd:APA91bEHPUWfrd3IVEkIrNA-jQlHCFdArK8seO_lShwcHJXYvwetQFutim8U_V_oifFxnMsnN5j7i8xhCbn7yenuqcN6t4YtWv-jNGKDf9EYQiLeyDykzqmDkP6SBNzjdt5UJQrXLBGu';
     
     if(token != null || token != 'null'){
         console.log(token);
@@ -32,7 +30,8 @@ app.get('/', function(req, res){
                 image : '',
                 largeIcon : image,
                 action : action
-            }
+            },
+            'DRIVER'
         );
     }
     res.json('Hay');

@@ -4,6 +4,11 @@ const CONNECTION_KEYS = {
     'disconnect' : 'STATUS_DISCONNECTED'
 }
 
+const APP = {
+    APP_CUSTOMER : 'CUSTOMER',
+    APP_DRIVER : 'DRIVER'
+}
+
 const DRIVER_BOOKING_STATUS = {
     'neutral' : 'NEUTRAL',
     'found' : 'FOUND',
@@ -124,5 +129,6 @@ module.exports = {
     CUSTOMER_PERMISSABLE_WAITING_TIME, 
     DRIVER_PASS_TIMER_IN_SEC, 
     PERMISSABLE_PAYMENT_METHOD,
-    PAYMENT_STATUS
+    PAYMENT_STATUS,
+    APP
 };
