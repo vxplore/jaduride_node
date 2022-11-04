@@ -39,6 +39,10 @@ const RIDE_STATUS = {
         'id' : "RIDE_ONGOING",
         'msg' : "ride is on going"
     },
+    RIDE_REACHED_ONE_KM_FROM_DESTINATION : {
+        'id' : "RIDE_REACHED_ONE_KM_FROM_DESTINATION",
+        'msg' : "ride is reached one km from destination"
+    },
     RIDE_COMPLETED : {
         'id' : "RIDE_COMPLETED",
         'msg' : "ride is completed"

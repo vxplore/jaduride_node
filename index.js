@@ -14,12 +14,27 @@ const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAG
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
-    // sendNotification(
-    // 'token', 
-    // 'title', 
-    // 'message', 
-    // 'imageUrl'
-    // );
+    
+
+    let title = 'Hallo rohit';
+    let msg = 'Rohit er sir...bolche hello';
+    let image = 'https://www.v-xplore.com/wp-content/uploads/2022/04/Debdutta-Panda.png';
+    let action = 'click';
+
+    let token = 'cj31qOBtS8WpLZ32fEP_aC:APA91bG5NBlgMcHPDU-9zOHzLWe9_tWH-3wk9ZyV2U2_1DBGpeq1U93fiKuJOiYC2hpfLP9f4mlyonkMcyDK0bHahfIu5xcF8ZgWgPBZ7F51aYK3xYng8sRWU9D58k1FuEH76wmIaYFo';
+    
+    if(token != null || token != 'null'){
+        console.log(token);
+        sendNotification(token, title, msg, image,
+            {
+                title : title,
+                body : msg,
+                image : '',
+                largeIcon : image,
+                action : action
+            }
+        );
+    }
     res.json('Hay');
 });
 
@@ -293,23 +308,29 @@ io.on('connection', function(socket){
         //     'status' : 'BOOKING_ACCEPT',
         //     'driverId' : ''
         // }
+
         let r = data.rideId;
         if( fs.existsSync(DIR_NAME +'/'+ r + '.' + rideFileExtension) ){ 
             console.log('triggered triggerRideResponse');
             
-            fs.readFile(DIR_NAME +'/'+ r + '.' +rideFileExtension, 'utf-8', (err, resData) => {
+            fs.readFile(DIR_NAME +'/'+ r + '.' + rideFileExtension, 'utf-8', (err, resData) => {
                 resData = JSON.parse(resData);
 
                 let nearestDriversArray = resData.nearestDriverIds;
 
                 let afterDriverAcceptenceDriverArray = deleteFromArray(nearestDriversArray, data.driverId);
-
+                
                 let nearestPassDriversArraySocketIds = [];
+                if( nearestDriversArray.length == 1 ){ nearestPassDriversArraySocketIds.push('undefined') }
+
                 for(let i = 0; i < afterDriverAcceptenceDriverArray.length; i++)
                     nearestPassDriversArraySocketIds.push(driverIdWithSocketId[afterDriverAcceptenceDriverArray[i]]);
-                
+
                 if(data.status == 'BOOKING_ACCEPT'){
                     // this emmition for those drivers whome not accepted ride request to close the ride request pop-up window
+                    console.log('nearestPassDriversArraySocketIds');
+                    console.log(nearestPassDriversArraySocketIds);
+
                     io.sockets.to(nearestPassDriversArraySocketIds).emit( SOCKET_THROUGH.SEND.AFTER_RIDE_ACCEPTED, {'status' : 'BOOKING_PASS', 'msg' : 'Someone was already accept this ride'});
 
                     resData.driverId = data.driverId;
@@ -432,11 +453,34 @@ io.on('connection', function(socket){
         //         'lng' : ''
         //     },
         //     'driverId' : '',
-        //     'customerId' : ''
+        //     'customerId' : '',
+        //     'distanceFromDestination' : ''
         // }
         let location = {
             "lat": parseFloat(data.currentLocation.lat),
-            "lng": parseFloat(data.currentLocation.lng)
+            "lng": parseFloat(data.currentLocation.lng)            
+        }
+
+        if( typeof data.distanceFromDestination != 'undefined'){
+            console.log('Driver distance from destination is : ' + data.distanceFromDestination);
+            let distanceFromDestination = data.distanceFromDestination;
+            if( parseFloat(distanceFromDestination) <= 1){
+                fs.readFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {
+                    resData = JSON.parse(resData);
+                    if( typeof resData.rideStatus.RIDE_REACHED_ONE_KM_FROM_DESTINATION ==  'undefined'){
+                        const now = new Date(); //get cuttent date time
+                        let rideStatusData = {
+                            'rideStatus' : RIDE_STATUS.RIDE_REACHED_ONE_KM_FROM_DESTINATION.id,
+                            'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss'),
+                        };
+                        resData.rideStatus.push(rideStatusData);
+                        resData = JSON.stringify(resData);
+                        fs.writeFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, resData ,(err) => {
+                            updateDriverCurrentStatus(driverId, 'DRIVER_WAITING').then((result) => {});
+                        });
+                    }
+                });
+            }
         }
         io.to(customerIdWithSocketId[data.customerId]).emit('driverLiveLocation', location);
     });
