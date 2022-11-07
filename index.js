@@ -14,26 +14,25 @@ const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAG
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
-    let title = 'Hallo rohit';
-    let msg = 'Rohit er sir...bolche hello';
-    let image = 'https://www.v-xplore.com/wp-content/uploads/2022/04/Debdutta-Panda.png';
-    let action = 'click';
+    // let title = 'Hallo rohit';
+    // let msg = 'message';
+    // let image = 'https://www.v-xplore.com/wp-content/uploads/2022/04/Debdutta-Panda.png';
+    // let action = 'click';
 
-    let token = 'fmLdLh1SQRqIMiTnyCJcRd:APA91bEHPUWfrd3IVEkIrNA-jQlHCFdArK8seO_lShwcHJXYvwetQFutim8U_V_oifFxnMsnN5j7i8xhCbn7yenuqcN6t4YtWv-jNGKDf9EYQiLeyDykzqmDkP6SBNzjdt5UJQrXLBGu';
+    // let token = 'chf-YpnRR-aUidpF8iYZ4D:APA91bECq73AE1jCa24_36vGElzbVtGF5MeBfaSGro3ACRv0gjqjEsGVKdLjhrouADdruwRcUSZo1Ggmya6VoqPAcZOuTZnMFlX9-zYYG2qDiyA3I_2f3s4kUqzfLH1T4_dE8fZ7nbX1';
     
-    if(token != null || token != 'null'){
-        console.log(token);
-        sendNotification(token, title, msg, image,
-            {
-                title : title,
-                body : msg,
-                image : '',
-                largeIcon : image,
-                action : action
-            },
-            'DRIVER'
-        );
-    }
+    // if(token != null || token != 'null'){
+    //     console.log(token);
+    //     sendNotification(token, title, msg, image,
+    //         {
+    //             title : title,
+    //             body : msg,
+    //             image : '',
+    //             largeIcon : image,
+    //             action : action
+    //         }
+    //     );
+    // }
     res.json('Hay');
 });
 

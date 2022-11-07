@@ -4,9 +4,10 @@ var serviceAccount = require("./service-account-driver.json");
 
 admin.initializeApp({
   	credential: admin.credential.cert(serviceAccount),
-});
+    name : 'jadu_ride_driver'
+})
 
-const sendNotification = (token, title, body, imageUrl, extraData) => {
+const sendNotificationToDriver = (token, title, body, imageUrl, extraData) => {
     const message = {
         notification: {
             title: title,
@@ -27,4 +28,4 @@ const sendNotification = (token, title, body, imageUrl, extraData) => {
     });
 }
 
-module.exports = {sendNotification};
+module.exports = {sendNotificationToDriver};
