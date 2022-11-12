@@ -1,4 +1,5 @@
 const mysql = require('mysql2');
+const date = require('date-and-time');
 
 const connectionPool = mysql.createPool({
     host: '35.213.182.208',
@@ -31,7 +32,7 @@ const getDriverDetails = (driverId, rideId) => {
 }
 
 function getRideDetails(rideID){    
-    let query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.created_at, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token 
+    let query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.created_at, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
     FROM \`ride_normal\` as r  
     JOIN \`customer_new\` as c ON r.customer_id = c.uid
     JOIN \`users\` as u ON c.user_id = u.uid
@@ -57,7 +58,7 @@ const updateRidePath = (rideId, waypoints, destination) => {
                 \`ride_normal\` 
             SET 
                 \`ride_normal\`.\`waypoints\` = '${waypoints}',
-                \`ride_normal\`.\`destination\` = '${destination}'                   
+                \`ride_normal\`.\`destination\` = '${destination}' 
             WHERE
                 \`ride_normal\`.\`uid\` = '${rideId}'`,
             (error, results) => {              
@@ -95,15 +96,26 @@ const cancelRide = (rideId, driverId, rideType = 'normal') => {
     else if(rideType == 'schedule') tableName = 'ride_schedule';
 
     return new Promise( (resolve, reject) => {
+        let sql =  (driverId != "") 
+                ?
+                    `UPDATE 
+                        \`ride_normal\`, \`driver\` 
+                    SET 
+                        \`ride_normal\`.\`ride_status\` = '${rideStatus}',
+                        \`driver\`.\`working_status_current_value\` = '${driverStatusWaiting}'
+                    WHERE 
+                        \`ride_normal\`.\`uid\` = '${rideId}'
+                        AND \`driver\`.\`uid\` = '${driverId}'`
+                :
+                    `UPDATE 
+                        \`ride_normal\`
+                    SET 
+                        \`ride_normal\`.\`ride_status\` = '${rideStatus}'                        
+                    WHERE 
+                        \`ride_normal\`.\`uid\` = '${rideId}'`;
+
         connectionPool.query(
-            `UPDATE 
-                \`ride_normal\`, \`driver\` 
-            SET 
-                \`ride_normal\`.\`ride_status\` = '${rideStatus}',
-                \`driver\`.\`working_status_current_value\` = '${driverStatusWaiting}'
-            WHERE 
-                \`ride_normal\`.\`uid\` = '${rideId}'
-                AND \`driver\`.\`uid\` = '${driverId}'`,
+           sql,
             (error, results) => {                
                 return (results.affectedRows === 2) ? resolve(true) : resolve(false);
             }
@@ -111,15 +123,27 @@ const cancelRide = (rideId, driverId, rideType = 'normal') => {
     });
 }
 
-const updateDriverCurrentStatus = (driverId, driverStatusWaiting) => {
-    return new Promise( (resolve, reject) => {
-        connectionPool.query(
+const updateDriverCurrentStatus = (driverId, driverStatusWaiting, currentRideStatus = '') => {
+    let sql = (currentRideStatus  == '') 
+        ?
             `UPDATE
                 \`driver\` as d
             SET
                 d.\`working_status_current_value\` = '${driverStatusWaiting}'
             WHERE                 
-                d.\`uid\` = '${driverId}'`,
+                d.\`uid\` = '${driverId}'`
+        :
+        `UPDATE
+            \`ride_normal\` as r, \`driver\` as d
+            SET
+                r.\`ride_status\` = '${currentRideStatus}',
+                d.\`working_status_current_value\` = '${driverStatusWaiting}'
+            WHERE                 
+                d.\`uid\` = '${driverId}'`;
+
+    return new Promise( (resolve, reject) => {
+        connectionPool.query(
+            sql,
             (error, results) => {
                 return resolve((results.affectedRows === 1) ? true : false);
             }         
@@ -127,4 +151,34 @@ const updateDriverCurrentStatus = (driverId, driverStatusWaiting) => {
     });
 }
 
-module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus }
+var add_minutes = (dt, minutes) => { return new Date(dt.getTime() + minutes*60000); }
+
+const getScheduleRideData = () => {
+    var d = new Date();
+    let n1 = d.toLocaleString("en-US", {timeZone: "Asia/Kolkata", hour12: false }).replace(/\//g,'-');
+    let currentDateTime = n1.split(',').join(' ');
+
+    const now = new Date(currentDateTime);
+    currentDateTime = date.format(now, 'YYYY-MM-DD HH:mm:ss');
+
+    let dateTimeAfter30Mins = add_minutes(d, 30).toLocaleString("en-US", {timeZone: "Asia/Kolkata", hour12: false }).replace(/\//g,'-');
+    dateTimeAfter30Mins = dateTimeAfter30Mins.split(',').join(' ');
+
+    now30Plus = new Date(dateTimeAfter30Mins);
+    dateTimeAfter30Mins = date.format(now30Plus, 'YYYY-MM-DD HH:mm:ss');
+
+    return new Promise( (resolve, reject) => {
+        let sql = `SELECT uid, schedule_date_time 
+        FROM ride_normal 
+        WHERE schedule_date_time between "${currentDateTime}" and "${dateTimeAfter30Mins}" AND ride_status = "processing" AND rideType = "ride_schedule" ORDER BY created_at DESC limit 1`;
+        
+        connectionPool.query(
+            sql,
+            (error, results) => {
+                return resolve((results.length != 0) ? results : []);
+            }
+        );
+    });
+}
+
+module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus, getScheduleRideData }

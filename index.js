@@ -7,7 +7,7 @@ const dotenv = require("dotenv");
 const date = require('date-and-time');
 const {sendNotification} = require("./firebase-config");
 
-const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus} = require('./database');
+const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus, getScheduleRideData} = require('./database');
 const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAGES_FRONTEND_DRIVER, CUSTOMER_PERMISSABLE_WAITING_TIME, SOCKET_THROUGH, DRIVER_PASS_TIMER_IN_SEC, PERMISSABLE_PAYMENT_METHOD, PAYMENT_STATUS} = require('./defaultValues');
 
 // const logger = require('./log'); 
@@ -57,7 +57,7 @@ const port = process.env.PORT;
 const DIR_CANCEL_FOLDER = process.env.DIR_CANCEL_FOLDER;
 const DIR_COMPLETED_FOLDER=process.env.DIR_COMPLETED_FOLDER;
 
-const jaduLogo = baseUrl+'assets/images/logo_jadu.png';
+const jaduLogo = baseUrl + 'assets/images/logo_jadu.png';
 
 // Make directory for storing todays ride details--start
 var today = new Date().toLocaleDateString();
@@ -102,6 +102,10 @@ io.on('connection', function(socket){
     // sent only rideId by customer, we get customerId from rideId itself
     // to get customerId from rideId we have to call Rest API
     socket.on( SOCKET_THROUGH.RECEIVED.INITIALISE_RIDE, (rideId) => {
+        initiateRide(rideId);
+    });
+
+    const initiateRide = (rideId) => {
         console.log(rideId);
 
         getRideDetails(rideId).then( (result) => {
@@ -118,7 +122,7 @@ io.on('connection', function(socket){
                 customerOriginLng = origin.lng;
 
                 const now = new Date(); //get cuttent date time
-
+                let rideType = (result[0].rideType == 'ride_schedule') ? RIDE_TYPE.KEY_SCHEDULE : RIDE_TYPE.KEY_NORMAL
                 let writeableData = {
                     'rideId' : rideId,
                     'customerId' : customerId,
@@ -141,7 +145,7 @@ io.on('connection', function(socket){
                     'waypoints' : JSON.parse(result[0].waypoints),
                     'service_id' : result[0].service_id,
                     'estimateDistance' : '',
-                    'rideType' : RIDE_TYPE.KEY_NORMAL,
+                    'rideType' : rideType,
                     'initiatedAt' : result[0].created_at,
                     'nearestDriverIds' : [],
                     'driverId' : '',
@@ -219,7 +223,19 @@ io.on('connection', function(socket){
                 });
             }
         });
-    });
+    }
+
+    setInterval(()=>{   //schedule ride iplementation
+        console.log('call schedule ride');
+        getScheduleRideData().then( (result) => {
+            console.log(result);
+            if(result.length != 0){
+                let rideId = result[0].uid;
+                // console.log(rideId);
+                initiateRide(rideId);
+            }
+        });
+    },1800000);// 1800000 // miliseconds = 30 minutes
 
     socket.on( SOCKET_THROUGH.RECEIVED.UPDATE_RIDE_LOCATION, (data) => {
         console.log('update ride location');
@@ -239,28 +255,59 @@ io.on('connection', function(socket){
         updateRidePath(data.rideId, data.waypoints, data.destination).then((result) => {
             console.log(result);
             if(result){
-                fs.readFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {            
-                    resData = JSON.parse(resData);
+                if(fs.existsSync(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension)){
+                    fs.readFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {            
+                        resData = JSON.parse(resData);
 
-                    resData.waypoints = data.waypoints;
-                    resData.destination = data.destination;
+                        resData.waypoints = data.waypoints;
+                        resData.destination = data.destination;
 
-                    let driverId = resData.driverId;
+                        let driverId = resData.driverId;
+                        
+                        // axios --start
+                        let url =  `https://jaduridedev.v-xplore.com/customers/ride/${data.rideId}/fare`;
+                        let getData = {
+                            origin : resData.origin,
+                            destination : data.destination,
+                            wayPoints : data.waypoints
+                        };                        
 
-                    let dropNavigationData = {
-                        'waypoints' : resData.waypoints,
-                        'destination' : resData.destination
-                    };
-                    console.log(dropNavigationData);
-                    io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.RIDE_DROP_NAVIGATION, dropNavigationData);
-
-                    resData = JSON.stringify(resData);
-                    fs.writeFile(DIR_NAME +'/'+ data.rideId+ '.' + rideFileExtension, resData ,(err) => {
-                        console.log('updated ride path');
-                        // resData.destination.lat = parseFloat(resData.destination.lat);
-                        // resData.destination.lng = parseFloat(resData.destination.lng);
+                        axios({
+                            method:'get',
+                            url,
+                            headers: {
+                                'x-api-key' : APIKEY,
+                                'platform' : 'web',
+                                'deviceid' : '',                                
+                            },
+                            data: getData
+                        })
+                        .then( (response) => {
+                            // console.log(response.data);
+                            if(response.status){
+                                let newFare = response.fare;
+                                resData.rideDetails.fare = newFare;
+                                let dropNavigationData = {
+                                    'waypoints' : resData.waypoints,
+                                    'destination' : resData.destination
+                                };
+                                console.log(dropNavigationData);
+                                io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.RIDE_DROP_NAVIGATION, dropNavigationData);
+        
+                                resData = JSON.stringify(resData);
+                                fs.writeFile(DIR_NAME +'/'+ data.rideId+ '.' + rideFileExtension, resData ,(err) => {
+                                    console.log('updated ride path');
+                                    // resData.destination.lat = parseFloat(resData.destination.lat);
+                                    // resData.destination.lng = parseFloat(resData.destination.lng);
+                                });
+                            }                       
+                        })
+                        .catch((response)=>{
+                            // console.log(response);
+                        });
+                        // axios --end                        
                     });
-                });
+                }
             }
         });
     });
@@ -533,6 +580,10 @@ io.on('connection', function(socket){
                     });
                 });
             });
+        }else{
+            cancelRide(rideId, "", 'normal').then((result) => {
+                console.log('ride cancel trigger before any driver accept');
+            });
         }
     });    
 
@@ -624,7 +675,7 @@ io.on('connection', function(socket){
                 if( fs.existsSync(oldFileNameWithPath) ){ 
                     fs.mkdir(DIR_NAME + '/' + DIR_COMPLETED_FOLDER, (err) => {
                         fs.rename(oldFileNameWithPath, newFileNameWithPath, (err) => {
-                            updateDriverCurrentStatus(driverId, 'DRIVER_WAITING').then((result) => {
+                            updateDriverCurrentStatus(driverId, 'DRIVER_WAITING', 'completed').then((result) => {
                                 console.log(
                                     (result) 
                                         ?
