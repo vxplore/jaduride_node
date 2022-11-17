@@ -70,6 +70,7 @@ function setDriverIdInRideDetails(data){
                 \`ride_normal\`, \`driver\` 
             SET 
                 \`ride_normal\`.\`driver_id\` = '${data.driverId}',
+                \`ride_normal\`.\`ride_status\` = 'started',
                 \`driver\`.\`working_status_current_value\` = 'DRIVER_ON_TRIP'
             WHERE
                 \`driver\`.\`uid\` = '${data.driverId}'
@@ -118,7 +119,7 @@ const cancelRide = (rideId, driverId, rideType = 'normal') => {
     });
 }
 
-const updateDriverCurrentStatus = (driverId, driverStatusWaiting, currentRideStatus = '') => {
+const updateDriverCurrentStatus = (rideId, driverId, driverStatusWaiting, currentRideStatus = '') => {
     let sql = (currentRideStatus  == '') 
         ?
             `UPDATE
@@ -128,19 +129,21 @@ const updateDriverCurrentStatus = (driverId, driverStatusWaiting, currentRideSta
             WHERE                 
                 d.\`uid\` = '${driverId}'`
         :
-        `UPDATE
-            \`ride_normal\` as r, \`driver\` as d
+            `UPDATE
+                \`ride_normal\` as r, \`driver\` as d
             SET
                 r.\`ride_status\` = '${currentRideStatus}',
                 d.\`working_status_current_value\` = '${driverStatusWaiting}'
-            WHERE                 
+            WHERE 
+                r.\`uid\` = '${rideId}' AND
+                r.\`driver_id\` = '${driverId}' AND                
                 d.\`uid\` = '${driverId}'`;
-
+    
     return new Promise( (resolve, reject) => {
         connectionPool.query(
             sql,
             (error, results) => {
-                return resolve((results.affectedRows === 1) ? true : false);
+                return resolve((results.affectedRows > 0) ? true : false);
             }         
         );
     });
@@ -176,19 +179,4 @@ const getScheduleRideData = () => {
     });
 }
 
-const isRideAvailable = (customerId) => {
-      return new Promise( (resolve, reject) => {
-        let sql = `SELECT uid, origin, waypoints, destination, service_id, fare, fareServiceTypeId FROM ride_normal WHERE customer_id = '${customerId}' AND ride_status = 'processing' AND rideType IS NULL ORDER BY created_at DESC`;
-        
-        connectionPool.query(
-            sql,
-            (error, results) => {
-                // console.log(error);
-                // console.log(results);
-                return resolve((results.length != 0) ? results : []);
-            }
-        );
-    });
-}
-
-module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus, getScheduleRideData, isRideAvailable }
+module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus, getScheduleRideData }

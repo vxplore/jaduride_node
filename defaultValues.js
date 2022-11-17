@@ -44,6 +44,10 @@ const RIDE_STATUS = {
         'id' : "RIDE_ONGOING",
         'msg' : "ride is on going"
     },
+    RIDE_ON_INITIATE_PAYMENT : {
+        'id' : "RIDE_ON_INITIATE_PAYMENT",
+        'msg' : "payment initiate for ride"
+    },
     RIDE_REACHED_ONE_KM_FROM_DESTINATION : {
         'id' : "RIDE_REACHED_ONE_KM_FROM_DESTINATION",
         'msg' : "ride is reached one km from destination"
@@ -86,6 +90,7 @@ const SOCKET_THROUGH = {
         INITIATE_RIDE_PAYMENT : 'initiateRidePayment',
         COMPLETE_RIDE_PAYMENT : 'completeRidePayment',
         IS_RIDE_AVAILABLE : 'isRideAvailable',
+        GET_ONGOING_RIDE_DETAILS : 'getOngoingRideDetails',
         DISCONNECTING : 'disconnecting'
     },
     SEND : {

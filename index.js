@@ -7,7 +7,7 @@ const dotenv = require("dotenv");
 const date = require('date-and-time');
 const {sendNotification} = require("./firebase-config");
 
-const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus, getScheduleRideData, isRideAvailable} = require('./database');
+const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus, getScheduleRideData} = require('./database');
 const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAGES_FRONTEND_DRIVER, CUSTOMER_PERMISSABLE_WAITING_TIME, SOCKET_THROUGH, DRIVER_PASS_TIMER_IN_SEC, PERMISSABLE_PAYMENT_METHOD, PAYMENT_STATUS} = require('./defaultValues');
 
 // const logger = require('./log'); 
@@ -36,13 +36,13 @@ app.get('/', function(req, res){
     res.json('Hay');
 });
 
-app.get('/customer', (req, res) => {
-    res.sendFile('F:/node/node/customer.html');
-});
+// app.get('/customer', (req, res) => {
+//     res.sendFile('F:/node/node/customer.html');
+// });
 
-app.get('/driver', (req, res) => {
-    res.sendFile('F:/node/node/driver.html');
-});
+// app.get('/driver', (req, res) => {
+//     res.sendFile('F:/node/node/driver.html');
+// });
 
 customerIdWithSocketId = {};
 driverIdWithSocketId = {};
@@ -238,7 +238,7 @@ io.on('connection', function(socket){
         getScheduleRideData().then( (result) => {
             if(result.length != 0){
                 let rideId = result[0].uid;
-                // console.log(rideId);
+                console.log(rideId);
                 initiateRide(rideId);
             }
         });
@@ -488,7 +488,7 @@ io.on('connection', function(socket){
     }); 
 
     socket.on( SOCKET_THROUGH.RECEIVED.UPDATE_CURRENT_LOCATION, (data) =>{ //from driver
-        console.log('call driver live location');
+        // console.log('call driver live location');
         // data = {
         //     'rideId' : '',
         //     'currentLocation' : {
@@ -502,8 +502,8 @@ io.on('connection', function(socket){
             "lat": parseFloat(data.currentLocation.lat),
             "lng": parseFloat(data.currentLocation.lng)            
         };
-        console.log(typeof data);
-        console.log(data.rideId);
+        // console.log(typeof data);
+        // console.log(data.rideId);
         // fs.readFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {
         //     // console.log(resData);
         //     resData = JSON.parse(resData);
@@ -636,17 +636,17 @@ io.on('connection', function(socket){
 
                 io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.CLIENT_LOCATED, clientLocatedData );  // emit to d
             }else if(type === 'KEY_END_TRIP'){
+                // rideStatusData = {
+                //     'rideStatus' : RIDE_STATUS.RIDE_COMPLETED.id,
+                //     'statusMsg' : RIDE_STATUS.RIDE_COMPLETED.msg,
+                //     'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss')
+                // };
                 rideStatusData = {
-                    'rideStatus' : RIDE_STATUS.RIDE_COMPLETED.id,
-                    'statusMsg' : RIDE_STATUS.RIDE_COMPLETED.msg,
+                    'rideStatus' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.id,
+                    'statusMsg' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.msg,
                     'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss')
                 };
-
-                console.log('RIDE_COMPLETED--------------------------------------------------------------------XXX');
-                console.log(rideStatusData);
-                
-                //  !!ch!!
-                io.sockets.to([customerIdWithSocketId[resData.customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
+                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
             }
 
             resData.rideStatus.push(rideStatusData);
@@ -657,8 +657,7 @@ io.on('connection', function(socket){
                 console.log('file updates');
             });
 
-            if(type === 'KEY_END_TRIP'){ //when we end trip then json file move to completed folder
-                
+            if(type === 'KEY_END_TRIP'){ //when we end trip then json file move to completed folder                
                 console.log('congrats  - trip end.........');
 
                 let oldFileNameWithPath = DIR_NAME + '/' + rideId + '.' + rideFileExtension;
@@ -670,22 +669,15 @@ io.on('connection', function(socket){
                 if( fs.existsSync(oldFileNameWithPath) ){ 
                     fs.mkdir(DIR_NAME + '/' + DIR_COMPLETED_FOLDER, (err) => {
                         fs.rename(oldFileNameWithPath, newFileNameWithPath, (err) => {
-                            updateDriverCurrentStatus(driverId, 'DRIVER_WAITING', 'completed').then((result) => {
-                                console.log(
-                                    (result) 
-                                        ?
-                                        'Driver released from ride... now driver allowed to get ride'
-                                        :
-                                        'Some error occoured to release driver from ride'
-                                );
+                            updateDriverCurrentStatus(rideId, driverId, 'DRIVER_WAITING', 'initiatePayment').then((result) => {
+                                console.log((result) ? 'Driver released from ride... now driver allowed to get ride' : 'Some error occoured to release driver from ride');
                                 fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {            
                                     resData = JSON.parse(resData);
                                     console.log(`ride fare to driver ${driverId}`);
                                     let rideFareDate = {
                                         'totalFare' : resData.rideDetails.fare,
                                         'qRCode' : resData.rideDetails.driverDetails.qrCode
-                                    };
-                                    console.log(rideFareDate);
+                                    };                                    
                                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.TOTAL_RIDE_FARE, rideFareDate);
                                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, false);
                                 });
@@ -959,23 +951,36 @@ io.on('connection', function(socket){
                         data: postData
                     })
                     .then( (response) => {
-                        console.log('success');
-                        console.log(response);
+                        // console.log('success');
+                        // console.log(response);
                     })
                     .catch((response)=>{
-                       console.log('error');
-                       console.log(response);
+                    //    console.log('error');
+                    //    console.log(response);
                     });
                     // axios --end
                 }
+
+                let rideStatusData = {
+                    'rideStatus' : RIDE_STATUS.RIDE_COMPLETED.id,
+                    'statusMsg' : RIDE_STATUS.RIDE_COMPLETED.msg,
+                    'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss')
+                };
+
+                updateDriverCurrentStatus(rideId, driverId, 'DRIVER_WAITING', 'completed').then((result) => {});
+                resData.rideStatus.push(rideStatusData); 
+
                 resData = JSON.stringify(resData);
                 fs.writeFile(DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + rideId+ '.' + rideFileExtension, resData ,(err) => {
                     console.log('Payment successful');
-                    //  !!ch!!
-                    io.sockets.to([customerIdWithSocketId[customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit(SOCKET_THROUGH.SEND.PAYMENT_STATUS, {
+                    
+                    io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.PAYMENT_STATUS, {
                         'status' : PAYMENT_STATUS.SUCCESS, 
                         'message' : `Payment of ₹ ${fare} to ${driverName} Successfull`
                     });
+                    
+                    io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
+
                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.AFTER_PAYMENT, true);
                 });
             }
@@ -1003,11 +1008,15 @@ io.on('connection', function(socket){
         console.log(driverIdWithSocketId);
     });
 
-    socket.on( 'getOngoingRideDetails', (rideId) => {
+    socket.on( SOCKET_THROUGH.RECEIVED.GET_ONGOING_RIDE_DETAILS, (rideId) => {
         console.log('getOngoingRideDetails');
         let fileLocation = DIR_NAME +'/'+ rideId + '.' + rideFileExtension;
-        if(fs.existsSync(fileLocation)){
-            fs.readFile(fileLocation, 'utf-8', (err, resData) => {
+        let completedFileLocation =  DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + rideId + '.' + rideFileExtension;
+
+        let getOriginalFileLocation = (fs.existsSync(fileLocation)) ? fileLocation : (fs.existsSync(completedFileLocation)) ? completedFileLocation : ''; 
+
+        if(fs.existsSync(getOriginalFileLocation)){
+            fs.readFile(getOriginalFileLocation, 'utf-8', (err, resData) => {
                 resData = JSON.parse(resData);
                
                 result = resData.rideDetails;
@@ -1021,46 +1030,17 @@ io.on('connection', function(socket){
                 let rideStatus = resData.rideStatus;
                 let rideStatusData = rideStatus[rideStatus.length - 1];
 
-                console.log(rideDetails);
+                if(rideStatusData.rideStatus == RIDE_STATUS.RIDE_ARRIVED){
+                    rideStatusData.rideStatus = RIDE_STATUS.RIDE_ARRIVING
+                }
+
+                // console.log(rideDetails);
                 console.log(rideStatusData);
-                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
                 io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.ACCEPTED_DRIVER_DETAILS, rideDetails);
+                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);                
             });
         }
     });
-
-    // socket.on( SOCKET_THROUGH.RECEIVED.IS_RIDE_AVAILABLE, (customerId) => {
-    //     isRideAvailable(customerId).then((result)=>{
-    //         if(result.length != 0){
-    //             result = result[0];
-
-    //             let location = [];
-    //             location.push(result.origin);
-
-    //             console.log('Result');
-    //             console.log(result);
-
-    //             location.push(result.destination);
-
-    //             let data = {
-    //                 locations: location,
-    //                 rideSpecificDetails: {
-    //                     rideId : result.uid
-    //                 },
-    //                 service: result.service_id,
-    //                 cab: {
-    //                     id : "",
-    //                     type : result.fareServiceTypeId,
-    //                     imageUrl : "",
-    //                     price : result.fare
-    //                 }
-    //             }
-    //             console.log('Data');
-    //             console.log(data);
-    //             io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.RIDE_ENTRY_POINT, data);
-    //         }
-    //     });
-    // });
 });
 
 http.listen(port, function(){
