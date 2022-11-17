@@ -27,7 +27,7 @@ const getDriverDetails = (driverId, rideId) => {
 }
 
 function getRideDetails(rideID){    
-    let query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.created_at, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
+    let query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
     FROM \`ride_normal\` as r  
     JOIN \`customer_new\` as c ON r.customer_id = c.uid
     JOIN \`users\` as u ON c.user_id = u.uid

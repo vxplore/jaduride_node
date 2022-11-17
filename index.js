@@ -129,6 +129,7 @@ io.on('connection', function(socket){
                 destination = JSON.parse(result[0].destination);
                 customerOriginLat = origin.lat;
                 customerOriginLng = origin.lng;
+                let serviceTypeId = result[0].serviceTypeId;
 
                 const now = new Date(); //get cuttent date time
                 let rideType = (result[0].rideType == 'ride_schedule') ? RIDE_TYPE.KEY_SCHEDULE : RIDE_TYPE.KEY_NORMAL
@@ -153,6 +154,7 @@ io.on('connection', function(socket){
                     },
                     'waypoints' : JSON.parse(result[0].waypoints),
                     'service_id' : result[0].service_id,
+                    'serviceTypeId' : serviceTypeId,
                     'estimateDistance' : '',
                     'rideType' : rideType,
                     'initiatedAt' : result[0].created_at,
@@ -168,13 +170,8 @@ io.on('connection', function(socket){
                 writeableData = JSON.stringify(writeableData);
                 
                 fs.writeFile(DIR_NAME +'/'+ rideId + '.' +rideFileExtension, writeableData, (err) => {
-                    msg = 'driver searching process starting';
-                    // socket.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['neutral'], 'msg' : msg});
-                    
+                    msg = 'driver searching process starting';                    
                     io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['neutral'], 'msg' : msg});
-                    
-                    // !!ch!!
-                    // io.to(customerIdWithSocketId[customerId]).emit( SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['neutral'], 'msg' : msg});
 
                     //now start driver searching according to customer origin lat and lng
                     let url =  `${baseUrlCustomer}nearByDrivers`;
@@ -190,7 +187,8 @@ io.on('connection', function(socket){
                             "currentLocation" : {
                                 "lat" : customerOriginLat,
                                 "lng" : customerOriginLng
-                            }
+                            },
+                            "serviceTypeId" : serviceTypeId
                         }
                     })
                     .then(function (response) {
@@ -323,13 +321,7 @@ io.on('connection', function(socket){
         fs.readFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, 'utf-8', (err, data) => {
             data = JSON.parse(data);
 
-            let nearByDriversIdArray = data.nearestDriverIds; 
-
-            // previously this data - now not required - start
-            // 'pickUpLocation' : 'abcd',
-            // 'estimateDistance' : '15 km',
-            // 'eta' : '10 mins',
-            // previously this data - now not required - end
+            let nearByDriversIdArray = data.nearestDriverIds;
 
             if(nearByDriversIdArray.length > 0){
                 let requestDriverData = {
