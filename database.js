@@ -8,11 +8,6 @@ const connectionPool = mysql.createPool({
     database: 'db6t8mtztkupxg'
 });
 
-// connectionPool.getConnection((err)=>{
-//     // if(err) throw err;
-//     console.log(err);
-// });
-
 const getDriverDetails = (driverId, rideId) => {
     return new Promise((resolve, reject) => {
         let query = `SELECT u.name, u.profile_image as image, d.vehicle_number, d.rating, d.wallet_value as wallet, r.otp, r.paymentMethod, r.fare, d.qr_code as qrCode, n.token
@@ -181,4 +176,19 @@ const getScheduleRideData = () => {
     });
 }
 
-module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus, getScheduleRideData }
+const isRideAvailable = (customerId) => {
+      return new Promise( (resolve, reject) => {
+        let sql = `SELECT uid, origin, waypoints, destination, service_id, fare, fareServiceTypeId FROM ride_normal WHERE customer_id = '${customerId}' AND ride_status = 'processing' AND rideType IS NULL ORDER BY created_at DESC`;
+        
+        connectionPool.query(
+            sql,
+            (error, results) => {
+                // console.log(error);
+                // console.log(results);
+                return resolve((results.length != 0) ? results : []);
+            }
+        );
+    });
+}
+
+module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus, getScheduleRideData, isRideAvailable }

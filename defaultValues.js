@@ -79,12 +79,13 @@ const SOCKET_THROUGH = {
         INITIALISE_RIDE : 'initialiseRide',
         TRIGGERRIDE_RESPONSE : 'triggerRideResponse',
         UPDATE_RIDE_LOCATION : 'updateRideLocation',
-        UPDATECURRENT_LOCATION : 'updateCurrentLocation',
+        UPDATE_CURRENT_LOCATION : 'updateCurrentLocation',
         CANCEL_RIDE : 'cancelRide',
         ONRIDE : 'onRide',
         VERIFY_OTP : 'verifyOtp',
         INITIATE_RIDE_PAYMENT : 'initiateRidePayment',
         COMPLETE_RIDE_PAYMENT : 'completeRidePayment',
+        IS_RIDE_AVAILABLE : 'isRideAvailable',
         DISCONNECTING : 'disconnecting'
     },
     SEND : {
@@ -103,7 +104,8 @@ const SOCKET_THROUGH = {
         TOTAL_RIDE_FARE : 'totalRideFare',
         PAYMENT_ACCEPTANCE_CONTROL : 'paymentAcceptanceControl',
         AFTER_PAYMENT : 'afterPayment',
-     }
+        RIDE_ENTRY_POINT :'rideEntryPoint'
+    }
 }
 
 const PERMISSABLE_PAYMENT_METHOD = {
