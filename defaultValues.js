@@ -109,7 +109,8 @@ const SOCKET_THROUGH = {
         TOTAL_RIDE_FARE : 'totalRideFare',
         PAYMENT_ACCEPTANCE_CONTROL : 'paymentAcceptanceControl',
         AFTER_PAYMENT : 'afterPayment',
-        RIDE_ENTRY_POINT :'rideEntryPoint'
+        RIDE_ENTRY_POINT :'rideEntryPoint',
+        MAIN_SCREEN_DATA : 'mainScreenData'
     }
 }
 

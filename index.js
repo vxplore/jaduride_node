@@ -7,38 +7,58 @@ const dotenv = require("dotenv");
 const date = require('date-and-time');
 const {sendNotification} = require("./firebase-config");
 
-const { getDriverDetails, getRideDetails, setDriverIdInRideDetails, cancelRide, updateRidePath, updateDriverCurrentStatus, getScheduleRideData} = require('./database');
-const {CONNECTION_KEYS, DRIVER_BOOKING_STATUS, RIDE_STATUS, RIDE_TYPE, RIDE_STAGES_FRONTEND_DRIVER, CUSTOMER_PERMISSABLE_WAITING_TIME, SOCKET_THROUGH, DRIVER_PASS_TIMER_IN_SEC, PERMISSABLE_PAYMENT_METHOD, PAYMENT_STATUS} = require('./defaultValues');
+const { 
+    getDriverDetails, 
+    getRideDetails,
+    setDriverIdInRideDetails, 
+    cancelRide, 
+    updateRidePath, 
+    updateDriverCurrentStatus, 
+    getScheduleRideData
+} = require('./database');
+
+const {
+    CONNECTION_KEYS, 
+    DRIVER_BOOKING_STATUS, 
+    RIDE_STATUS, 
+    RIDE_TYPE, 
+    RIDE_STAGES_FRONTEND_DRIVER, 
+    CUSTOMER_PERMISSABLE_WAITING_TIME, 
+    SOCKET_THROUGH, 
+    DRIVER_PASS_TIMER_IN_SEC, 
+    PERMISSABLE_PAYMENT_METHOD, 
+    PAYMENT_STATUS
+} = require('./defaultValues');
 
 // const logger = require('./log'); 
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
-    // let title = 'Hallo rohit';
-    // let msg = 'message';
-    // let image = 'https://www.v-xplore.com/wp-content/uploads/2022/04/Debdutta-Panda.png';
-    // let action = 'click';
+    let title = 'Hallo rohit';
+    let msg = 'message';
+    let image = 'https://www.v-xplore.com/wp-content/uploads/2022/04/Debdutta-Panda.png';
+    let action = 'click';
 
-    // let token = 'chf-YpnRR-aUidpF8iYZ4D:APA91bECq73AE1jCa24_36vGElzbVtGF5MeBfaSGro3ACRv0gjqjEsGVKdLjhrouADdruwRcUSZo1Ggmya6VoqPAcZOuTZnMFlX9-zYYG2qDiyA3I_2f3s4kUqzfLH1T4_dE8fZ7nbX1';
-    
-    // if(token != null || token != 'null'){
-    //     console.log(token);
-    //     sendNotification(token, title, msg, image,
-    //         {
-    //             title : title,
-    //             body : msg,
-    //             image : '',
-    //             largeIcon : image,
-    //             action : action
-    //         }
-    //     );
-    // }
+    // let token = ['fPi33CtMTrazwNqdHri_3d:APA91bGQIebC_Tu4xEIjWVXOeocKl3iEvI7JHxhW4cVoLQ0UXwM2K_p5XW7bVqviAH34lxZ0K2a-uJNc-4O3wlMBQT3go_R9DWa_EzWvUydOwbmvT94MqH7G5FisYu7-27Wzty88bI9H','fNa1554oQiOhX8knJ75s72:APA91bG-nkwLdwPZBoOFc31dUQOaH_CHWh8jaSZFz1WhlNaEGUfpuRVtrzKzseqpBD7R5iupPN-JFttbH_xU0LT7s_aelXLmIyOtaBW2-CmdmCKaQ4o1KxxDthC58c41DEAVJSxCRdpq'];
+    let token = '';
+    if(token != null || token != 'null'){
+        console.log(token);
+        sendNotification(token, title, msg, image,
+            {
+                title : title,
+                body : msg,
+                image : '',
+                largeIcon : image,
+                action : action
+            }
+        );
+    }
     res.json('Hay');
 });
 
-// app.get('/customer', (req, res) => {
-//     res.sendFile('F:/node/node/customer.html');
-// });
+app.get('/customer', (req, res) => {
+    res.sendFile('C:/Users/v-xplore/Documents/GitHub/jaduride_node/customer.html');
+});
 
 // app.get('/driver', (req, res) => {
 //     res.sendFile('F:/node/node/driver.html');
@@ -46,6 +66,8 @@ app.get('/', function(req, res){
 
 customerIdWithSocketId = {};
 driverIdWithSocketId = {};
+adminIdWithSocketIdForOnCallBooking = {};
+mainScreen = {};
 
 dotenv.config();
 
@@ -79,7 +101,17 @@ const arePointsNear = (checkPoint, centerPoint, km) =>{
     var dx = Math.abs(centerPoint.lng - checkPoint.lng) * kx;
     var dy = Math.abs(centerPoint.lat - checkPoint.lat) * ky;
     return Math.sqrt(dx * dx + dy * dy) <= km;
-  }
+}
+
+const getRideCount = (DIR) => {
+    if(fs.existsSync(DIR)){
+        return fs.readdirSync(DIR, {withFileTypes: true})
+        .filter(item => !item.isDirectory())
+        .map(item => item.name).length;
+    }else{
+        return 0;
+    }
+}
 
 io.on('connection', function(socket){
     // customer connected or not status sent
@@ -96,15 +128,36 @@ io.on('connection', function(socket){
         let type = data.type;
         let id = data.id;
         
-        if(type === 'KEY_CUSTOMER') customerIdWithSocketId[id] = socket.id;    
+        if(type === 'KEY_CUSTOMER') customerIdWithSocketId[id] = socket.id;
         else if(type === 'KEY_DRIVER') driverIdWithSocketId[id] = socket.id;
+        else if(type === 'KEY_ADMIN') adminIdWithSocketIdForOnCallBooking[id] = socket.id;
+        else if(type === 'KEY_MAIN_SCREEN') mainScreen[id] = socket.id;
         
         console.log('Connected Customers : ');
         console.log(customerIdWithSocketId);
 
         console.log('Connected Drivers : ');
-        console.log(driverIdWithSocketId);       
+        console.log(driverIdWithSocketId);   
+        
+        console.log('Connected Admins : ');
+        console.log(adminIdWithSocketIdForOnCallBooking);
+
+        console.log('Connected Main Screen : ');
+        console.log(mainScreen);
+        
+        sendMainScreenData();
     });
+
+    const sendMainScreenData = () => {
+        let mainScreenData = {
+            'connectedDrivers' : Object.keys(driverIdWithSocketId).length,
+            'connectedCustomers' :  Object.keys(customerIdWithSocketId).length,
+            'totalOngoingRides' : getRideCount(DIR_NAME),
+            'totalCompleteRides' : getRideCount(DIR_NAME + '/'  + DIR_COMPLETED_FOLDER),
+            'totalCancelledRides' : getRideCount(DIR_NAME + '/'  + DIR_CANCEL_FOLDER)
+        };
+        io.to(mainScreen['MAIN_SCREEN_1234']).emit(SOCKET_THROUGH.SEND.MAIN_SCREEN_DATA, mainScreenData);
+    }
 
     // on initialisation of ride
     // sent only rideId by customer, we get customerId from rideId itself
@@ -133,6 +186,12 @@ io.on('connection', function(socket){
 
                 const now = new Date(); //get cuttent date time
                 let rideType = (result[0].rideType == 'ride_schedule') ? RIDE_TYPE.KEY_SCHEDULE : RIDE_TYPE.KEY_NORMAL
+                let driverId = '';
+                
+                if(result[0].driverId != ''){ 
+                    driverId = result[0].driverId;
+                }
+
                 let writeableData = {
                     'rideId' : rideId,
                     'customerId' : customerId,
@@ -159,7 +218,7 @@ io.on('connection', function(socket){
                     'rideType' : rideType,
                     'initiatedAt' : result[0].created_at,
                     'nearestDriverIds' : [],
-                    'driverId' : '',
+                    'driverId' : driverId,
                     'rideStatus' : [{                    
                         'rideStatus' : RIDE_STATUS.RIDE_INITIATED.id,
                         'statusMsg' : RIDE_STATUS.RIDE_INITIATED.msg,
@@ -173,62 +232,71 @@ io.on('connection', function(socket){
                     msg = 'driver searching process starting';                    
                     io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['neutral'], 'msg' : msg});
 
-                    //now start driver searching according to customer origin lat and lng
-                    let url =  `${baseUrlCustomer}nearByDrivers`;
-                    axios({
-                        method:'get',
-                        url,
-                        headers: {
-                            'x-api-key' : APIKEY,
-                            'platform' : 'web',
-                            'deviceid' : ''
-                        },
-                        data: {
-                            "currentLocation" : {
-                                "lat" : customerOriginLat,
-                                "lng" : customerOriginLng
+                    if(driverId === '' || driverId === null){ //except scan booking this if block will be executed
+                        //now start driver searching according to customer origin lat and lng
+                        let url =  `${baseUrlCustomer}nearByDrivers`;
+                        axios({
+                            method:'get',
+                            url,
+                            headers: {
+                                'x-api-key' : APIKEY,
+                                'platform' : 'web',
+                                'deviceid' : ''
                             },
-                            "serviceTypeId" : serviceTypeId
-                        }
-                    })
-                    .then(function (response) {
-                        // console.log(response);
-                        let getNearestDriversData = (response.data.length === 0) ? [] : response.data.nearByDrivers;
-
-                        fs.readFile(DIR_NAME +'/'+ rideId + '.' +rideFileExtension, 'utf-8', (err, data) => {
-                            data = JSON.parse(data);
-
-                            let nearByDriversIdArray = [];  
-            
-                            for(let i = 0; i < getNearestDriversData.length; i++){
-                                nearByDriversIdArray.push(getNearestDriversData[i].id);
+                            data: {
+                                "currentLocation" : {
+                                    "lat" : customerOriginLat,
+                                    "lng" : customerOriginLng
+                                },
+                                "serviceTypeId" : serviceTypeId
                             }
+                        })
+                        .then(function (response) {
+                            // console.log(response);
+                            let getNearestDriversData = (response.data.length === 0) ? [] : response.data.nearByDrivers;
 
-                            data.nearestDriverIds = nearByDriversIdArray;
-                            data = JSON.stringify(data);
+                            fs.readFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, 'utf-8', (err, data) => {
+                                data = JSON.parse(data);
 
-                            
-
-                            fs.writeFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, data, (err) => {
-                                if(getNearestDriversData.length === 0){                        
-                                    msg = 'no driver found';
-                                    // socket.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg});
-                                    
-                                    // !!ch!!
-                                    io.sockets.to([customerIdWithSocketId[customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg});
-                                }else{
-                                    sendRequestToDriver(rideId);
+                                let nearByDriversIdArray = []; 
+                                let nearByDriversTokenArray = [];  
+                
+                                // let nearestDriverData = {};
+                                for(let i = 0; i < getNearestDriversData.length; i++){                                    
+                                    // nearestDriverData = {
+                                    //     'id' : getNearestDriversData[i].id,
+                                    //     'token' : getNearestDriversData[i].token
+                                    // }
+                                    nearByDriversIdArray.push(getNearestDriversData[i].id);
+                                    nearByDriversTokenArray.push(getNearestDriversData[i].token);
                                 }
-                            });
 
+                                data.nearestDriverIds = nearByDriversIdArray;
+                                data.nearByDriversTokenArray = nearByDriversTokenArray;
+                                data = JSON.stringify(data);                                
+
+                                fs.writeFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, data, (err) => {
+                                    if(getNearestDriversData.length === 0){                        
+                                        msg = 'no driver found';
+                                        // socket.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg}); 
+                                        io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg});
+                                    }else{
+                                        sendRequestToDriver(rideId);
+                                    }
+                                });
+
+                            });
+                        })
+                        .catch(function (error) {
+                            console.log(error);
                         });
-                    })
-                    .catch(function (error) {
-                        console.log(error);
-                    });
+                    }else if(driverId != ''){
+                        sendRequestToDriver(rideId);
+                    }
+                    sendMainScreenData();
                 });
             }
-        });
+        });        
     }
 
     setInterval(()=>{   //schedule ride iplementation
@@ -310,7 +378,7 @@ io.on('connection', function(socket){
                         .catch((response)=>{
                             // console.log(response);
                         });
-                        // axios --end                        
+                        // axios --end
                     });
                 }
             }
@@ -318,12 +386,54 @@ io.on('connection', function(socket){
     });
 
     function sendRequestToDriver(rideId){ 
+        console.log('sendRequestToDriver');
         fs.readFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, 'utf-8', (err, data) => {
             data = JSON.parse(data);
 
-            let nearByDriversIdArray = data.nearestDriverIds;
+            if(data.driverId === '' || data.driverId === null){//except scan booking
+                let nearByDriversIdArray = data.nearestDriverIds;
 
-            if(nearByDriversIdArray.length > 0){
+                if(nearByDriversIdArray.length > 0){
+                    let requestDriverData = {
+                        'rideId' : data.rideId,
+                        'vehicleType' : data.service_id,                    
+                        'passTimer' : DRIVER_PASS_TIMER_IN_SEC,                    
+                        'lat' : parseFloat(data.origin.lat),
+                        'lng' : parseFloat(data.origin.lng),
+                        'customerDetails' : data.customerDetails
+                    };
+        
+                    console.log(nearByDriversIdArray);
+                    
+                    let nearestDriversArraySocketIds = [];
+                    for(let i = 0; i < nearByDriversIdArray.length; i++)
+                        nearestDriversArraySocketIds.push(driverIdWithSocketId[nearByDriversIdArray[i]]);
+        
+                    console.log(nearestDriversArraySocketIds);
+                    io.sockets.to(nearestDriversArraySocketIds).emit( SOCKET_THROUGH.SEND.RIDE_REQUEST, requestDriverData);
+                    
+                    // Send notificaton to customer start
+                    let title = 'Ride request';
+                    let msg = 'New ride request ';
+                    let image = jaduLogo;
+                    let action = JSON.stringify({
+                        "screen": "dashBoard",
+                        "bookingDetails" : requestDriverData
+                    });
+
+                    let token = data.nearByDriversTokenArray[0];
+                    
+                    sendNotification(token, title, msg, image,
+                        {
+                            title : title,
+                            body : msg,
+                            image : image,
+                            largeIcon : image,
+                            action : action
+                        }
+                    );
+                }
+            }else{ // booking using scan
                 let requestDriverData = {
                     'rideId' : data.rideId,
                     'vehicleType' : data.service_id,                    
@@ -332,15 +442,7 @@ io.on('connection', function(socket){
                     'lng' : parseFloat(data.origin.lng),
                     'customerDetails' : data.customerDetails
                 };
-    
-                console.log(nearByDriversIdArray);
-    
-                let nearestDriversArraySocketIds = [];
-                for(let i = 0; i < nearByDriversIdArray.length; i++)
-                    nearestDriversArraySocketIds.push(driverIdWithSocketId[nearByDriversIdArray[i]]);
-    
-                console.log(nearestDriversArraySocketIds);
-                io.sockets.to(nearestDriversArraySocketIds).emit( SOCKET_THROUGH.SEND.RIDE_REQUEST, requestDriverData);
+                io.to(driverIdWithSocketId[data.driverId]).emit( SOCKET_THROUGH.SEND.RIDE_REQUEST, requestDriverData);
             }
         });
     }
@@ -381,21 +483,15 @@ io.on('connection', function(socket){
 
                     setDriverData = {'rideId' : data.rideId, 'driverId' : data.driverId};
 
-                    if(setDriverIdInRideDetails(setDriverData)){
-                        
-                        // io.sockets.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'driver found'});
-                        console.log('#############---------------------------Driver found-----------------------################');   
-
-                        //  !!ch!!
-                        io.sockets.to([customerIdWithSocketId[resData.customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'Driver found'});
-                        // io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'driver found'});
+                    if(setDriverIdInRideDetails(setDriverData)){                        
+                        console.log('#############---------------------------Driver found-----------------------################');                        
+                        io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'Driver found'});
                         
                         getDriverDetails(data.driverId, data.rideId).then( (result) => {
                             console.log(result);
                             if( Array.isArray(result) && result.length > 0){
                                 result = result[0];
-                                // let paymentMethod = result.paymentMethod;
-                                // paymentMethod.replace
+                                
                                 let rideDetails = {
                                     'otp' : result.otp,
                                     'paymentMethod' : result.paymentMethod.replace(/\"/g, ''),
@@ -560,7 +656,8 @@ io.on('connection', function(socket){
                                         'rideStatus' : RIDE_STATUS.RIDE_CANCELLED.id,
                                         'statusMsg' : RIDE_STATUS.RIDE_CANCELLED.msg,
                                         'isCancelled' : result
-                                    });                                
+                                    });
+                                    sendMainScreenData();
                                 }
                             });
                         });
@@ -570,9 +667,10 @@ io.on('connection', function(socket){
         }else{
             cancelRide(rideId, "", 'normal').then((result) => {
                 console.log('ride cancel trigger before any driver accept');
+                sendMainScreenData();
             });
-        }
-    });    
+        }        
+    });
 
     socket.on( SOCKET_THROUGH.RECEIVED.ONRIDE , (data) => { //from driver
         // data = {
@@ -583,7 +681,7 @@ io.on('connection', function(socket){
         rideId = data.rideId;
 
         fs.readFile(DIR_NAME + '/' + rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {
-            resData = JSON.parse(resData);            
+            resData = JSON.parse(resData);
             let driverId = resData.driverId;
             const now = new Date(); //get cuttent date time
             let rideStatusData;
@@ -678,9 +776,7 @@ io.on('connection', function(socket){
                     });
                 }
             }
-        });
-
-        
+        });        
     });
 
     socket.on( SOCKET_THROUGH.RECEIVED.VERIFY_OTP, (data) => {
@@ -815,12 +911,7 @@ io.on('connection', function(socket){
                         data: postData
                     })
                     .then( (response) => {
-                        // console.log('success');
-                        
-                        resData = JSON.parse(resData);                        
-                        // console.log(resData.rideId);
-                        // console.log(resData.customerId);
-                        // console.log(typeof resData);
+                        resData = JSON.parse(resData);
 
                         io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.PAYMENT_STATUS, paymentStatusData);
                         io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, true);
@@ -974,9 +1065,11 @@ io.on('connection', function(socket){
                     io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
 
                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.AFTER_PAYMENT, true);
+
+                    sendMainScreenData();
                 });
             }
-        });
+        });        
     }
 
     socket.on( SOCKET_THROUGH.RECEIVED.DISCONNECTING, () => {
@@ -998,6 +1091,12 @@ io.on('connection', function(socket){
         
         console.log('Driver : ');
         console.log(driverIdWithSocketId);
+
+        let mainScreenData = {
+            'connectedDrivers' : Object.keys(driverIdWithSocketId).length,
+            'connectedCustomers' :  Object.keys(customerIdWithSocketId).length
+        };
+        io.to(mainScreen['MAIN_SCREEN_1234']).emit(SOCKET_THROUGH.SEND.MAIN_SCREEN_DATA, mainScreenData);
     });
 
     socket.on( SOCKET_THROUGH.RECEIVED.GET_ONGOING_RIDE_DETAILS, (rideId) => {

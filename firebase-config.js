@@ -16,15 +16,24 @@ const sendNotification = (token, title, body, imageUrl, extraData) => {
         data: extraData,
         token: token
     };
-
-    admin.messaging().send(message)
-        .then((response) => {
-            console.log('Successfully sent message: ');
-            console.log(response);
-        })
-       .catch((error) => {
-           console.log('Error sending message:', error);
-    });
+    if(typeof token === 'string'){
+        admin.messaging().send(message)
+            .then((response) => {
+                console.log('Successfully sent message: ');
+                console.log(response);
+            })
+        .catch((error) => {
+            console.log('Error sending message:', error);
+        });
+    }else{
+        admin.messaging().sendMulticast(message)
+            .then((response) => {
+                console.log('Successfully sent message: ');
+            })
+        .catch((error) => {
+            console.log('Error sending message:', error);
+        });
+    }
 }
 
 module.exports = {sendNotification};
