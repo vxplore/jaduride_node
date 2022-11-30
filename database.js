@@ -26,7 +26,7 @@ const getDriverDetails = (driverId, rideId) => {
     });
 }
 
-function getRideDetails(rideID){    
+const getRideDetails = (rideID) => {
     let query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
     FROM \`ride_normal\` as r  
     JOIN \`customer_new\` as c ON r.customer_id = c.uid
@@ -63,7 +63,7 @@ const updateRidePath = (rideId, waypoints, destination) => {
     });
 }
 
-function setDriverIdInRideDetails(data){   
+const setDriverIdInRideDetails = (data) => {
     return new Promise((resolve, reject) => {
         connectionPool.query(
             `UPDATE 
@@ -173,10 +173,19 @@ const getScheduleRideData = () => {
         connectionPool.query(
             sql,
             (error, results) => {
-                return resolve((results.length != 0) ? results : []);
+                // return resolve((results.length != 0) ? results : []);
+                return resolve(results);
             }
         );
     });
 }
 
-module.exports = {getDriverDetails, getRideDetails, updateRidePath, setDriverIdInRideDetails, cancelRide, updateDriverCurrentStatus, getScheduleRideData }
+module.exports = {
+    getDriverDetails, 
+    getRideDetails, 
+    updateRidePath, 
+    setDriverIdInRideDetails, 
+    cancelRide, 
+    updateDriverCurrentStatus, 
+    getScheduleRideData 
+}

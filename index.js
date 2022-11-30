@@ -108,9 +108,8 @@ const getRideCount = (DIR) => {
         return fs.readdirSync(DIR, {withFileTypes: true})
         .filter(item => !item.isDirectory())
         .map(item => item.name).length;
-    }else{
-        return 0;
     }
+    return 0;    
 }
 
 io.on('connection', function(socket){
@@ -385,7 +384,7 @@ io.on('connection', function(socket){
         });
     });
 
-    function sendRequestToDriver(rideId){ 
+    const sendRequestToDriver = (rideId) => { 
         console.log('sendRequestToDriver');
         fs.readFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, 'utf-8', (err, data) => {
             data = JSON.parse(data);
@@ -709,7 +708,6 @@ io.on('connection', function(socket){
 
                 let token = resData.customerDetails.token;
                 if(token != null || token != 'null'){
-                    console.log(token);
                     sendNotification(token, title, msg, image,
                         {
                             title : title,
@@ -722,15 +720,9 @@ io.on('connection', function(socket){
                 }
                 // Send notification to customer end
 
-                io.sockets.to([customerIdWithSocketId[resData.customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
-
+                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
                 io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.CLIENT_LOCATED, clientLocatedData );  // emit to d
-            }else if(type === 'KEY_END_TRIP'){
-                // rideStatusData = {
-                //     'rideStatus' : RIDE_STATUS.RIDE_COMPLETED.id,
-                //     'statusMsg' : RIDE_STATUS.RIDE_COMPLETED.msg,
-                //     'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss')
-                // };
+            }else if(type === 'KEY_END_TRIP'){                
                 rideStatusData = {
                     'rideStatus' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.id,
                     'statusMsg' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.msg,
