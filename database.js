@@ -181,11 +181,11 @@ const getScheduleRideData = () => {
 }
 
 module.exports = {
-    getDriverDetails, 
-    getRideDetails, 
-    updateRidePath, 
-    setDriverIdInRideDetails, 
-    cancelRide, 
-    updateDriverCurrentStatus, 
-    getScheduleRideData 
+    getDriverDetails,
+    getRideDetails,
+    updateRidePath,
+    setDriverIdInRideDetails,
+    cancelRide,
+    updateDriverCurrentStatus,
+    getScheduleRideData
 }

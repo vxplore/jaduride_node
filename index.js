@@ -7,30 +7,30 @@ const dotenv = require("dotenv");
 const date = require('date-and-time');
 const {sendNotification} = require("./firebase-config");
 
-const { 
-    getDriverDetails, 
+const {
+    getDriverDetails,
     getRideDetails,
-    setDriverIdInRideDetails, 
-    cancelRide, 
-    updateRidePath, 
-    updateDriverCurrentStatus, 
+    setDriverIdInRideDetails,
+    cancelRide,
+    updateRidePath,
+    updateDriverCurrentStatus,
     getScheduleRideData
 } = require('./database');
 
 const {
-    CONNECTION_KEYS, 
-    DRIVER_BOOKING_STATUS, 
-    RIDE_STATUS, 
-    RIDE_TYPE, 
-    RIDE_STAGES_FRONTEND_DRIVER, 
-    CUSTOMER_PERMISSABLE_WAITING_TIME, 
-    SOCKET_THROUGH, 
-    DRIVER_PASS_TIMER_IN_SEC, 
-    PERMISSABLE_PAYMENT_METHOD, 
+    CONNECTION_KEYS,
+    DRIVER_BOOKING_STATUS,
+    RIDE_STATUS,
+    RIDE_TYPE,
+    RIDE_STAGES_FRONTEND_DRIVER,
+    CUSTOMER_PERMISSABLE_WAITING_TIME,
+    SOCKET_THROUGH,
+    DRIVER_PASS_TIMER_IN_SEC,
+    PERMISSABLE_PAYMENT_METHOD,
     PAYMENT_STATUS
 } = require('./defaultValues');
 
-// const logger = require('./log'); 
+// const logger = require('./log');
 
 app.get('/', function(req, res){
     // logger.error('Hello, Winston!');
@@ -109,7 +109,7 @@ const getRideCount = (DIR) => {
         .filter(item => !item.isDirectory())
         .map(item => item.name).length;
     }
-    return 0;    
+    return 0;
 }
 
 io.on('connection', function(socket){
@@ -126,24 +126,24 @@ io.on('connection', function(socket){
         // console.log(data);
         let type = data.type;
         let id = data.id;
-        
+
         if(type === 'KEY_CUSTOMER') customerIdWithSocketId[id] = socket.id;
         else if(type === 'KEY_DRIVER') driverIdWithSocketId[id] = socket.id;
         else if(type === 'KEY_ADMIN') adminIdWithSocketIdForOnCallBooking[id] = socket.id;
         else if(type === 'KEY_MAIN_SCREEN') mainScreen[id] = socket.id;
-        
+
         console.log('Connected Customers : ');
         console.log(customerIdWithSocketId);
 
         console.log('Connected Drivers : ');
-        console.log(driverIdWithSocketId);   
-        
+        console.log(driverIdWithSocketId);
+
         console.log('Connected Admins : ');
         console.log(adminIdWithSocketIdForOnCallBooking);
 
         console.log('Connected Main Screen : ');
         console.log(mainScreen);
-        
+
         sendMainScreenData();
     });
 
@@ -186,8 +186,8 @@ io.on('connection', function(socket){
                 const now = new Date(); //get cuttent date time
                 let rideType = (result[0].rideType == 'ride_schedule') ? RIDE_TYPE.KEY_SCHEDULE : RIDE_TYPE.KEY_NORMAL
                 let driverId = '';
-                
-                if(result[0].driverId != ''){ 
+
+                if(result[0].driverId != ''){
                     driverId = result[0].driverId;
                 }
 
@@ -218,17 +218,17 @@ io.on('connection', function(socket){
                     'initiatedAt' : result[0].created_at,
                     'nearestDriverIds' : [],
                     'driverId' : driverId,
-                    'rideStatus' : [{                    
+                    'rideStatus' : [{
                         'rideStatus' : RIDE_STATUS.RIDE_INITIATED.id,
                         'statusMsg' : RIDE_STATUS.RIDE_INITIATED.msg,
                         'rideEta' : '',
                         'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss'),
                     }]
-                };                
+                };
                 writeableData = JSON.stringify(writeableData);
-                
+
                 fs.writeFile(DIR_NAME +'/'+ rideId + '.' +rideFileExtension, writeableData, (err) => {
-                    msg = 'driver searching process starting';                    
+                    msg = 'driver searching process starting';
                     io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['neutral'], 'msg' : msg});
 
                     if(driverId === '' || driverId === null){ //except scan booking this if block will be executed
@@ -251,17 +251,18 @@ io.on('connection', function(socket){
                             }
                         })
                         .then(function (response) {
+                            // console.log('nearby drivers');
                             // console.log(response);
                             let getNearestDriversData = (response.data.length === 0) ? [] : response.data.nearByDrivers;
 
                             fs.readFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, 'utf-8', (err, data) => {
                                 data = JSON.parse(data);
 
-                                let nearByDriversIdArray = []; 
-                                let nearByDriversTokenArray = [];  
-                
+                                let nearByDriversIdArray = [];
+                                let nearByDriversTokenArray = [];
+
                                 // let nearestDriverData = {};
-                                for(let i = 0; i < getNearestDriversData.length; i++){                                    
+                                for(let i = 0; i < getNearestDriversData.length; i++){
                                     // nearestDriverData = {
                                     //     'id' : getNearestDriversData[i].id,
                                     //     'token' : getNearestDriversData[i].token
@@ -272,12 +273,12 @@ io.on('connection', function(socket){
 
                                 data.nearestDriverIds = nearByDriversIdArray;
                                 data.nearByDriversTokenArray = nearByDriversTokenArray;
-                                data = JSON.stringify(data);                                
+                                data = JSON.stringify(data);
 
                                 fs.writeFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, data, (err) => {
-                                    if(getNearestDriversData.length === 0){                        
+                                    if(getNearestDriversData.length === 0){
                                         msg = 'no driver found';
-                                        // socket.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg}); 
+                                        // socket.emit('driverSearching', {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg});
                                         io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['not_found'], 'msg' : msg});
                                     }else{
                                         sendRequestToDriver(rideId);
@@ -295,11 +296,15 @@ io.on('connection', function(socket){
                     sendMainScreenData();
                 });
             }
-        });        
+        });
     }
 
     setInterval(()=>{   //schedule ride iplementation
         console.log('call schedule ride');
+        
+        const now = new Date();
+        console.log(date.format(now, 'YYYY/MM/DD HH:mm:ss'));
+
         getScheduleRideData().then( (result) => {
             if(result.length != 0){
                 let rideId = result[0].uid;
@@ -328,21 +333,21 @@ io.on('connection', function(socket){
             console.log(result);
             if(result){
                 if(fs.existsSync(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension)){
-                    fs.readFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {            
+                    fs.readFile(DIR_NAME +'/'+ data.rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {
                         resData = JSON.parse(resData);
 
                         resData.waypoints = data.waypoints;
                         resData.destination = data.destination;
 
                         let driverId = resData.driverId;
-                        
+
                         // axios --start
                         let url =  `https://jaduridedev.v-xplore.com/customers/ride/${data.rideId}/fare`;
                         let getData = {
                             origin : resData.origin,
                             destination : data.destination,
                             waypoints : data.waypoints
-                        };                        
+                        };
 
                         axios({
                             method:'get',
@@ -350,7 +355,7 @@ io.on('connection', function(socket){
                             headers: {
                                 'x-api-key' : APIKEY,
                                 'platform' : 'web',
-                                'deviceid' : '',                                
+                                'deviceid' : '',
                             },
                             data: getData
                         })
@@ -365,14 +370,14 @@ io.on('connection', function(socket){
                                 };
                                 console.log(dropNavigationData);
                                 io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.RIDE_DROP_NAVIGATION, dropNavigationData);
-        
+
                                 resData = JSON.stringify(resData);
                                 fs.writeFile(DIR_NAME +'/'+ data.rideId+ '.' + rideFileExtension, resData ,(err) => {
                                     console.log('updated ride path');
                                     // resData.destination.lat = parseFloat(resData.destination.lat);
                                     // resData.destination.lng = parseFloat(resData.destination.lng);
                                 });
-                            }                       
+                            }
                         })
                         .catch((response)=>{
                             // console.log(response);
@@ -384,7 +389,7 @@ io.on('connection', function(socket){
         });
     });
 
-    const sendRequestToDriver = (rideId) => { 
+    const sendRequestToDriver = (rideId) => {
         console.log('sendRequestToDriver');
         fs.readFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, 'utf-8', (err, data) => {
             data = JSON.parse(data);
@@ -395,22 +400,22 @@ io.on('connection', function(socket){
                 if(nearByDriversIdArray.length > 0){
                     let requestDriverData = {
                         'rideId' : data.rideId,
-                        'vehicleType' : data.service_id,                    
-                        'passTimer' : DRIVER_PASS_TIMER_IN_SEC,                    
+                        'vehicleType' : data.service_id,
+                        'passTimer' : DRIVER_PASS_TIMER_IN_SEC,
                         'lat' : parseFloat(data.origin.lat),
                         'lng' : parseFloat(data.origin.lng),
                         'customerDetails' : data.customerDetails
                     };
-        
+
                     console.log(nearByDriversIdArray);
-                    
+
                     let nearestDriversArraySocketIds = [];
                     for(let i = 0; i < nearByDriversIdArray.length; i++)
                         nearestDriversArraySocketIds.push(driverIdWithSocketId[nearByDriversIdArray[i]]);
-        
+
                     console.log(nearestDriversArraySocketIds);
                     io.sockets.to(nearestDriversArraySocketIds).emit( SOCKET_THROUGH.SEND.RIDE_REQUEST, requestDriverData);
-                    
+
                     // Send notificaton to customer start
                     let title = 'Ride request';
                     let msg = 'New ride request ';
@@ -421,7 +426,7 @@ io.on('connection', function(socket){
                     });
 
                     let token = data.nearByDriversTokenArray[0];
-                    
+
                     sendNotification(token, title, msg, image,
                         {
                             title : title,
@@ -435,8 +440,8 @@ io.on('connection', function(socket){
             }else{ // booking using scan
                 let requestDriverData = {
                     'rideId' : data.rideId,
-                    'vehicleType' : data.service_id,                    
-                    'passTimer' : DRIVER_PASS_TIMER_IN_SEC,                    
+                    'vehicleType' : data.service_id,
+                    'passTimer' : DRIVER_PASS_TIMER_IN_SEC,
                     'lat' : parseFloat(data.origin.lat),
                     'lng' : parseFloat(data.origin.lng),
                     'customerDetails' : data.customerDetails
@@ -455,16 +460,16 @@ io.on('connection', function(socket){
         // }
 
         let r = data.rideId;
-        if( fs.existsSync(DIR_NAME +'/'+ r + '.' + rideFileExtension) ){ 
+        if( fs.existsSync(DIR_NAME +'/'+ r + '.' + rideFileExtension) ){
             console.log('triggered triggerRideResponse');
-            
+
             fs.readFile(DIR_NAME +'/'+ r + '.' + rideFileExtension, 'utf-8', (err, resData) => {
                 resData = JSON.parse(resData);
 
                 let nearestDriversArray = resData.nearestDriverIds;
 
                 let afterDriverAcceptenceDriverArray = deleteFromArray(nearestDriversArray, data.driverId);
-                
+
                 let nearestPassDriversArraySocketIds = [];
                 if( nearestDriversArray.length == 1 ){ nearestPassDriversArraySocketIds.push('undefined') }
 
@@ -482,15 +487,15 @@ io.on('connection', function(socket){
 
                     setDriverData = {'rideId' : data.rideId, 'driverId' : data.driverId};
 
-                    if(setDriverIdInRideDetails(setDriverData)){                        
-                        console.log('#############---------------------------Driver found-----------------------################');                        
+                    if(setDriverIdInRideDetails(setDriverData)){
+                        console.log('#############---------------------------Driver found-----------------------################');
                         io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'Driver found'});
-                        
+
                         getDriverDetails(data.driverId, data.rideId).then( (result) => {
                             console.log(result);
                             if( Array.isArray(result) && result.length > 0){
                                 result = result[0];
-                                
+
                                 let rideDetails = {
                                     'otp' : result.otp,
                                     'paymentMethod' : result.paymentMethod.replace(/\"/g, ''),
@@ -548,18 +553,18 @@ io.on('connection', function(socket){
                                     'serviceId' : resData.service_id,
                                     'pickUpLocation': resData.origin
                                 };
-                                
-                                console.log(rideStatusData);                                
-                                
-                                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
-                                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.ACCEPTED_DRIVER_DETAILS, rideDetails);
+
+                                console.log(rideStatusData);
+
+                                io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
+                                io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.ACCEPTED_DRIVER_DETAILS, rideDetails);
 
                                 resData = JSON.stringify(resData);
                                 fs.writeFile(DIR_NAME +'/'+ data.rideId+ '.' +rideFileExtension, resData ,(err) => {
                                     let rideCurrentDriver = [];
                                     rideCurrentDriver.push(driverIdWithSocketId[data.driverId]);
                                     io.sockets.to(rideCurrentDriver).emit(SOCKET_THROUGH.SEND.RIDE_NAVIGATION, rideNavigationData);
-                                });                            
+                                });
                             }else{
                                 io.to(driverIdWithSocketId[data.driverId]).emit( SOCKET_THROUGH.SEND.RIDE_CANCELLED, { //send to driver
                                     'rideStatus' : RIDE_STATUS.RIDE_CANCELLED.id,
@@ -568,11 +573,11 @@ io.on('connection', function(socket){
                                 });
                             }
                         });
-                    }                
+                    }
                 }
-            }); 
-        }       
-    }); 
+            });
+        }
+    });
 
     socket.on( SOCKET_THROUGH.RECEIVED.UPDATE_CURRENT_LOCATION, (data) =>{ //from driver
         // console.log('call driver live location');
@@ -587,7 +592,7 @@ io.on('connection', function(socket){
         // }
         let location = {
             "lat": parseFloat(data.currentLocation.lat),
-            "lng": parseFloat(data.currentLocation.lng)            
+            "lng": parseFloat(data.currentLocation.lng)
         };
         // console.log(typeof data);
         // console.log(data.rideId);
@@ -617,16 +622,16 @@ io.on('connection', function(socket){
         let oldFileNameWithPath = DIR_NAME + '/' + rideId + '.' + rideFileExtension;
         let newFileNameWithPath = DIR_NAME + '/'  + DIR_CANCEL_FOLDER + '/' + rideId + '.' + rideFileExtension;
 
-        if( fs.existsSync(oldFileNameWithPath) ){ 
+        if( fs.existsSync(oldFileNameWithPath) ){
             fs.mkdir(DIR_NAME +'/' + DIR_CANCEL_FOLDER, (err) => {
                 fs.rename(oldFileNameWithPath, newFileNameWithPath, (err) => {
                     fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {
                         resData = JSON.parse(resData);
 
-                        let alreadyCancelled = false;   
+                        let alreadyCancelled = false;
 
-                        if(resData.rideStatus.length === 1 ){    
-                            alreadyCancelled = true;                                
+                        if(resData.rideStatus.length === 1 ){
+                            alreadyCancelled = true;
                             let nearestDriversArraySocketIds = [];
                             let nearByDriversIdArray = resData.nearestDriverIds;
                             for(let i = 0; i < nearByDriversIdArray.length; i++)
@@ -647,9 +652,9 @@ io.on('connection', function(socket){
                         let driverId = resData.driverId;
                         resData = JSON.stringify(resData);
 
-                        fs.writeFile(newFileNameWithPath, resData ,(err) => {                            
+                        fs.writeFile(newFileNameWithPath, resData ,(err) => {
                             cancelRide(rideId, driverId, 'normal').then((result) => {
-                                if(!alreadyCancelled){                                
+                                if(!alreadyCancelled){
                                     console.log('ride cancel after driver accept');
                                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.RIDE_CANCELLED, { //send to driver
                                         'rideStatus' : RIDE_STATUS.RIDE_CANCELLED.id,
@@ -668,13 +673,13 @@ io.on('connection', function(socket){
                 console.log('ride cancel trigger before any driver accept');
                 sendMainScreenData();
             });
-        }        
+        }
     });
 
     socket.on( SOCKET_THROUGH.RECEIVED.ONRIDE , (data) => { //from driver
         // data = {
         //     'rideId' : '',
-        //     'type' : 'KEY_CLIENT_LOCATED',            
+        //     'type' : 'KEY_CLIENT_LOCATED',
         // }
         let type = data.type;
         rideId = data.rideId;
@@ -693,7 +698,7 @@ io.on('connection', function(socket){
                         "second": CUSTOMER_PERMISSABLE_WAITING_TIME.sec
                     }
                 };
-    
+
                 rideStatusData = {
                     'rideStatus' : RIDE_STATUS.RIDE_ARRIVED.id,
                     'statusMsg' : RIDE_STATUS.RIDE_ARRIVED.msg,
@@ -722,7 +727,7 @@ io.on('connection', function(socket){
 
                 io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
                 io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.CLIENT_LOCATED, clientLocatedData );  // emit to d
-            }else if(type === 'KEY_END_TRIP'){                
+            }else if(type === 'KEY_END_TRIP'){
                 rideStatusData = {
                     'rideStatus' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.id,
                     'statusMsg' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.msg,
@@ -739,7 +744,7 @@ io.on('connection', function(socket){
                 console.log('file updates');
             });
 
-            if(type === 'KEY_END_TRIP'){ //when we end trip then json file move to completed folder                
+            if(type === 'KEY_END_TRIP'){ //when we end trip then json file move to completed folder
                 console.log('congrats  - trip end.........');
 
                 let oldFileNameWithPath = DIR_NAME + '/' + rideId + '.' + rideFileExtension;
@@ -748,18 +753,18 @@ io.on('connection', function(socket){
                 console.log('oldpath : ' + oldFileNameWithPath);
                 console.log('newpath : ' + newFileNameWithPath);
 
-                if( fs.existsSync(oldFileNameWithPath) ){ 
+                if( fs.existsSync(oldFileNameWithPath) ){
                     fs.mkdir(DIR_NAME + '/' + DIR_COMPLETED_FOLDER, (err) => {
                         fs.rename(oldFileNameWithPath, newFileNameWithPath, (err) => {
                             updateDriverCurrentStatus(rideId, driverId, 'DRIVER_WAITING', 'initiatePayment').then((result) => {
                                 console.log((result) ? 'Driver released from ride... now driver allowed to get ride' : 'Some error occoured to release driver from ride');
-                                fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {            
+                                fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {
                                     resData = JSON.parse(resData);
                                     console.log(`ride fare to driver ${driverId}`);
                                     let rideFareDate = {
                                         'totalFare' : resData.rideDetails.fare,
                                         'qRCode' : resData.rideDetails.driverDetails.qrCode
-                                    };                                    
+                                    };
                                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.TOTAL_RIDE_FARE, rideFareDate);
                                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, false);
                                 });
@@ -768,7 +773,7 @@ io.on('connection', function(socket){
                     });
                 }
             }
-        });        
+        });
     });
 
     socket.on( SOCKET_THROUGH.RECEIVED.VERIFY_OTP, (data) => {
@@ -780,8 +785,8 @@ io.on('connection', function(socket){
         let driverId = data.driverId;
 
         const now = new Date(); //get cuttent date time
-        
-        fs.readFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {            
+
+        fs.readFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, 'utf-8', (err, resData) => {
             resData = JSON.parse(resData);
 
             let rideOriginalOtp = resData.rideDetails.otp;
@@ -802,20 +807,20 @@ io.on('connection', function(socket){
                     'statusMsg' : RIDE_STATUS.RIDE_STARTED.msg,
                     'dateTime' : date.format(now, 'YYYY-MM-DD HH:mm:ss')
                 };
-                
-                io.sockets.to([customerIdWithSocketId[resData.customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c             
-                
+
+                io.sockets.to([customerIdWithSocketId[resData.customerId], customerIdWithSocketId['ab3a094fd876138f6871060b6ba2a7621659098221']]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
+
                 for(let status of resData.rideStatus){
                     if(status.rideStatus === RIDE_STATUS.RIDE_ARRIVED.id){
                         let driverArrivedTime = new Date(status.dateTime);
                         let rideStartTime = new Date(date.format(now, 'YYYY-MM-DD HH:mm:ss'));
                         let driverWaitingTimeInMiliSec = rideStartTime - driverArrivedTime;
                         let totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME = ( parseInt(CUSTOMER_PERMISSABLE_WAITING_TIME.min) * 60000 ) +  ( parseInt(CUSTOMER_PERMISSABLE_WAITING_TIME.sec) * 1000);
-                        
+
                         let driverWaitingTime = {};
 
                         if(driverWaitingTimeInMiliSec > totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME){
-                            // Waiting charges applied 
+                            // Waiting charges applied
                             console.log(totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME);
                             let time = (parseInt(driverWaitingTimeInMiliSec) - parseInt(totalOriginalCUSTOMER_PERMISSABLE_WAITING_TIME) );
                             console.log('Extra time :' + time);
@@ -827,19 +832,19 @@ io.on('connection', function(socket){
                         console.log('driver waiting time : ' + driverWaitingTimeInMiliSec);
                     }
                 }
-                resData.rideStatus.push(rideStatusData);          
+                resData.rideStatus.push(rideStatusData);
             }
 
             console.log('send to driver otp verification result');
 
-            // !!ch!! 
-            io.sockets.to([ driverIdWithSocketId[driverId], driverIdWithSocketId['DRIVER_fe1ccf453534542c3a038a48_16584789911'] ]).emit( SOCKET_THROUGH.SEND.IS_OTP_VERIFIED, checkOtpResponse); 
-            // io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.IS_OTP_VERIFIED, checkOtpResponse);               
-           
+            // !!ch!!
+            io.sockets.to([ driverIdWithSocketId[driverId], driverIdWithSocketId['DRIVER_fe1ccf453534542c3a038a48_16584789911'] ]).emit( SOCKET_THROUGH.SEND.IS_OTP_VERIFIED, checkOtpResponse);
+            // io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.IS_OTP_VERIFIED, checkOtpResponse);
+
             if(rideOriginalOtp === otp){
                 resData.destination.lat = parseFloat(resData.destination.lat);
                 resData.destination.lng = parseFloat(resData.destination.lng);
-                
+
                 let dropNavigationData = {
                     'waypoints' :resData.waypoints,
                     'destination' : resData.destination
@@ -855,9 +860,9 @@ io.on('connection', function(socket){
 
     socket.on(SOCKET_THROUGH.RECEIVED.INITIATE_RIDE_PAYMENT, (data) => {
         // data = {
-        //     'rideId' : '',            
+        //     'rideId' : '',
         //     'selectedMethod' : '',
-        //     'amount' : ''            
+        //     'amount' : ''
         // }
         fs.readFile(DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + data.rideId + '.' +rideFileExtension, 'utf-8', (err, resData) => {
             resData = JSON.parse(resData);
@@ -869,8 +874,8 @@ io.on('connection', function(socket){
             if(data.selectedMethod == PERMISSABLE_PAYMENT_METHOD.METHOD_CASH || data.selectedMethod == PERMISSABLE_PAYMENT_METHOD.METHOD_WALLET){
                 paymentDetails = {
                     method : data.selectedMethod,
-                    amount : data.amount,                    
-                    status : [{ 
+                    amount : data.amount,
+                    status : [{
                         status : PAYMENT_STATUS.LOADING,
                         dateTime : date.format(now, 'YYYY-MM-DD HH:mm:ss'),
                     }]
@@ -879,16 +884,16 @@ io.on('connection', function(socket){
 
                 if(data.selectedMethod == PERMISSABLE_PAYMENT_METHOD.METHOD_CASH){
                     paymentStatusData = {
-                        'status' : PAYMENT_STATUS.LOADING, 
+                        'status' : PAYMENT_STATUS.LOADING,
                         'message' : 'Waiting for driver acceptence'
                     }
-                    
+
                     // axios --start
                     let url =  `https://jaduridedev.v-xplore.com/customers/rideTransactionThroughCash`;
                     let postData = {
                         rideId : data.rideId,
                         customerId : resData.customerId,
-                        driverId : resData.driverId, 
+                        driverId : resData.driverId,
                         amount : data.amount,
                     };
 
@@ -898,7 +903,7 @@ io.on('connection', function(socket){
                         headers: {
                             'x-api-key' : APIKEY,
                             'platform' : 'web',
-                            'deviceid' : '',                                
+                            'deviceid' : '',
                         },
                         data: postData
                     })
@@ -909,13 +914,13 @@ io.on('connection', function(socket){
                         io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, true);
                     })
                     .catch((response)=>{
-                        console.log('error');                
+                        console.log('error');
                     });
                     // axios --end
                 }else if(data.selectedMethod == PERMISSABLE_PAYMENT_METHOD.METHOD_WALLET){
                     io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, false);
                     paymentStatusData = {
-                        'status' : PAYMENT_STATUS.LOADING, 
+                        'status' : PAYMENT_STATUS.LOADING,
                         'message' : 'Transaction being processed...\nPlease wait....'
                     }
                     // check amount available is wallet of customer
@@ -937,15 +942,15 @@ io.on('connection', function(socket){
                         let newAmountInCustomerWallet = parseFloat(amountInCustomerWallet) - parseFloat(data.amount);
                         console.log(newAmountInDriverWallet);
                         console.log(newAmountInCustomerWallet);
-                        
+
                         // axios --start
                         let url =  `https://jaduridedev.v-xplore.com/customers/rideTransactionThroughWallet`;
                         let postData = {
                             rideId : data.rideId,
                             customerId : resData.customerId,
-                            driverId : resData.driverId, 
+                            driverId : resData.driverId,
                             amount : data.amount,
-                            newAmountInDriverWallet : newAmountInDriverWallet, 
+                            newAmountInDriverWallet : newAmountInDriverWallet,
                             newAmountInCustomerWallet : newAmountInCustomerWallet
                         };
 
@@ -955,7 +960,7 @@ io.on('connection', function(socket){
                             headers: {
                                 'x-api-key' : APIKEY,
                                 'platform' : 'web',
-                                'deviceid' : '',                                
+                                'deviceid' : '',
                             },
                             data: postData
                         })
@@ -974,7 +979,7 @@ io.on('connection', function(socket){
                         // axios --end
                     }
                 }
-            }           
+            }
 
             // let customerId = resData.customerId;
             resData = JSON.stringify(resData);
@@ -995,7 +1000,7 @@ io.on('connection', function(socket){
             resData = JSON.parse(resData);
             console.log(typeof resData);
             const now = new Date();
-            let status = { 
+            let status = {
                 status : PAYMENT_STATUS.SUCCESS,
                 dateTime : date.format(now, 'YYYY-MM-DD HH:mm:ss'),
             }
@@ -1004,7 +1009,7 @@ io.on('connection', function(socket){
                 let driverId = resData.driverId;
                 let customerId = resData.customerId;
                 let fare = resData.rideDetails.fare;
-                let driverName = resData.rideDetails.driverDetails.name;                
+                let driverName = resData.rideDetails.driverDetails.name;
 
                 if(resData.rideDetails.paymentMethod == PERMISSABLE_PAYMENT_METHOD.METHOD_CASH){
                     // axios --start
@@ -1021,7 +1026,7 @@ io.on('connection', function(socket){
                         headers: {
                             'x-api-key' : APIKEY,
                             'platform' : 'web',
-                            'deviceid' : '',                                
+                            'deviceid' : '',
                         },
                         data: postData
                     })
@@ -1043,17 +1048,17 @@ io.on('connection', function(socket){
                 };
 
                 updateDriverCurrentStatus(rideId, driverId, 'DRIVER_WAITING', 'completed').then((result) => {});
-                resData.rideStatus.push(rideStatusData); 
+                resData.rideStatus.push(rideStatusData);
 
                 resData = JSON.stringify(resData);
                 fs.writeFile(DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + rideId+ '.' + rideFileExtension, resData ,(err) => {
                     console.log('Payment successful');
-                    
+
                     io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.PAYMENT_STATUS, {
-                        'status' : PAYMENT_STATUS.SUCCESS, 
+                        'status' : PAYMENT_STATUS.SUCCESS,
                         'message' : `Payment of ₹ ${fare} to ${driverName} Successfull`
                     });
-                    
+
                     io.to(customerIdWithSocketId[customerId]).emit(SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
 
                     io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.AFTER_PAYMENT, true);
@@ -1061,10 +1066,10 @@ io.on('connection', function(socket){
                     sendMainScreenData();
                 });
             }
-        });        
+        });
     }
 
-    socket.on( SOCKET_THROUGH.RECEIVED.DISCONNECTING, () => {
+    socket.on(SOCKET_THROUGH.RECEIVED.DISCONNECTING, () => {
         console.log('Disconnected : ' + socket.id);
         let key_driver = getKeyByValue(driverIdWithSocketId, socket.id);
 
@@ -1080,7 +1085,7 @@ io.on('connection', function(socket){
 
         console.log('Customers : ');
         console.log(customerIdWithSocketId);
-        
+
         console.log('Driver : ');
         console.log(driverIdWithSocketId);
 
@@ -1091,17 +1096,17 @@ io.on('connection', function(socket){
         io.to(mainScreen['MAIN_SCREEN_1234']).emit(SOCKET_THROUGH.SEND.MAIN_SCREEN_DATA, mainScreenData);
     });
 
-    socket.on( SOCKET_THROUGH.RECEIVED.GET_ONGOING_RIDE_DETAILS, (rideId) => {
+    socket.on(SOCKET_THROUGH.RECEIVED.GET_ONGOING_RIDE_DETAILS, (rideId) => {
         console.log('getOngoingRideDetails');
         let fileLocation = DIR_NAME +'/'+ rideId + '.' + rideFileExtension;
         let completedFileLocation =  DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + rideId + '.' + rideFileExtension;
 
-        let getOriginalFileLocation = (fs.existsSync(fileLocation)) ? fileLocation : (fs.existsSync(completedFileLocation)) ? completedFileLocation : ''; 
+        let getOriginalFileLocation = (fs.existsSync(fileLocation)) ? fileLocation : (fs.existsSync(completedFileLocation)) ? completedFileLocation : '';
 
         if(fs.existsSync(getOriginalFileLocation)){
             fs.readFile(getOriginalFileLocation, 'utf-8', (err, resData) => {
                 resData = JSON.parse(resData);
-               
+
                 result = resData.rideDetails;
                 let driverDetails = resData.rideDetails.driverDetails
                 let rideDetails = {
@@ -1120,7 +1125,7 @@ io.on('connection', function(socket){
                 // console.log(rideDetails);
                 console.log(rideStatusData);
                 io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.ACCEPTED_DRIVER_DETAILS, rideDetails);
-                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);                
+                io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
             });
         }
     });
