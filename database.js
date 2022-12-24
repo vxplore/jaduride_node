@@ -1,5 +1,6 @@
 const mysql = require('mysql2');
 const date = require('date-and-time');
+const { SERVICE } = require('./defaultValues');
 
 const connectionPool = mysql.createPool({
     host: '35.213.182.208',
@@ -10,10 +11,12 @@ const connectionPool = mysql.createPool({
 
 const getDriverDetails = (driverId, rideId) => {
     return new Promise((resolve, reject) => {
-        let query = `SELECT u.name, u.profile_image as image, d.vehicle_number, d.rating, d.wallet_value as wallet, r.otp, r.paymentMethod, r.fare, d.qr_code as qrCode, n.token
+        let query = `SELECT u.name, u.mobile, u.profile_image as image, d.vehicle_number, d.rating, d.wallet_value as wallet, r.otp, r.paymentMethod, r.fare, d.qr_code as qrCode, n.token,
+        (SELECT COUNT(uid) FROM ride_normal WHERE driver_id = '${driverId}' AND ride_status = 'completed') totalTrips, cust.name carName
         FROM \`driver\` as d JOIN \`users\` as u ON u.uid = d.user_id 
         JOIN \`ride_normal\` AS r ON r.driver_id = d.uid
         LEFT JOIN \`device_notification_data_firebase\` as n ON r.driver_id = n.specific_level_user_id
+        LEFT JOIN \`cabs_under_service_type\` as cust ON d.cabs_under_service_type = cust.uid
         WHERE d.uid = '${driverId}'
         AND  r.uid = '${rideId}'`;
         
@@ -26,13 +29,24 @@ const getDriverDetails = (driverId, rideId) => {
     });
 }
 
-const getRideDetails = (rideID) => {
-    let query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
-    FROM \`ride_normal\` as r  
-    JOIN \`customer_new\` as c ON r.customer_id = c.uid
-    JOIN \`users\` as u ON c.user_id = u.uid
-    LEFT JOIN \`device_notification_data_firebase\` as n ON r.customer_id = n.specific_level_user_id
-    WHERE r.uid = '${rideID}'`;
+const getRideDetails = (rideID, serviceId, driverId) => {
+    let query = '';
+    if(serviceId == SERVICE.SERVICE_EMERGENCY && driverId != ""){
+        query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, d.wallet_value as wallet, d.rating, n.token, r.rideType 
+        FROM \`ride_normal\` as r  
+        JOIN \`driver\` as d ON r.driver_id = d.uid
+        JOIN \`users\` as u ON d.user_id = u.uid
+        LEFT JOIN \`device_notification_data_firebase\` as n ON r.driver_id = n.specific_level_user_id
+        WHERE r.uid = '${rideID}'`;
+    }else{
+        query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
+        FROM \`ride_normal\` as r  
+        JOIN \`customer_new\` as c ON r.customer_id = c.uid
+        JOIN \`users\` as u ON c.user_id = u.uid
+        LEFT JOIN \`device_notification_data_firebase\` as n ON r.customer_id = n.specific_level_user_id
+        WHERE r.uid = '${rideID}'`;
+    }
+    console.log(query);
     return new Promise((resolve, reject) => {
         connectionPool.query(
             query,

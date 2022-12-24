@@ -81,6 +81,7 @@ const SOCKET_THROUGH = {
     RECEIVED : {
         AFTER_CONNECTION : 'afterConnection',
         INITIALISE_RIDE : 'initialiseRide',
+        INITIALISE_EMERGENCY_RIDE_DRIVER : 'initialiseEmergencyRideDriver',
         TRIGGERRIDE_RESPONSE : 'triggerRideResponse',
         UPDATE_RIDE_LOCATION : 'updateRideLocation',
         UPDATE_CURRENT_LOCATION : 'updateCurrentLocation',
@@ -91,7 +92,8 @@ const SOCKET_THROUGH = {
         COMPLETE_RIDE_PAYMENT : 'completeRidePayment',
         IS_RIDE_AVAILABLE : 'isRideAvailable',
         GET_ONGOING_RIDE_DETAILS : 'getOngoingRideDetails',
-        DISCONNECTING : 'disconnecting'
+        DISCONNECTING : 'disconnecting',
+        ON_RIDE_NAVIGATION_CREATE : 'onRideNavigationCreate'
     },
     SEND : {
         CONNECTION_STATUS : 'connectionStatus',
@@ -117,7 +119,8 @@ const SOCKET_THROUGH = {
 const PERMISSABLE_PAYMENT_METHOD = {
     METHOD_CASH : 'METHOD_CASH',
     METHOD_WALLET : 'METHOD_WALLET',
-    METHOD_UPI : 'METHOD_UPI'
+    METHOD_UPI : 'METHOD_UPI',
+    METHOD_PAYLATER : 'METHOD_PAYLATER'
 }
 
 const PAYMENT_STATUS = {
@@ -125,6 +128,10 @@ const PAYMENT_STATUS = {
     SUCCESS : 'SUCCESS',
     FAILURE : 'FAILURE',
     NONE : 'NONE'
+}
+
+const SERVICE = {
+    SERVICE_EMERGENCY : 'SERVICE_EMERGENCY'
 }
 
 module.exports = {
@@ -138,5 +145,6 @@ module.exports = {
     DRIVER_PASS_TIMER_IN_SEC, 
     PERMISSABLE_PAYMENT_METHOD,
     PAYMENT_STATUS,
-    APP
+    APP,
+    SERVICE
 };
