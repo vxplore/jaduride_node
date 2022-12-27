@@ -5,10 +5,8 @@ const fs = require('fs');
 const axios = require('axios');
 const dotenv = require("dotenv");
 const date = require('date-and-time');
-const schedule = require('node-schedule');
 
 const {sendNotification} = require("./firebase-config");
-
 
 const {
     getDriverDetails,
@@ -511,6 +509,11 @@ io.on('connection', function(socket){
                         console.log('#############---------------------------Driver found-----------------------################');
                         io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.DRIVER_SEARCHING, {'driverSearchStatus' : DRIVER_BOOKING_STATUS['found'], 'msg' : 'Driver found'});
 
+                        //Update ride fare for SERVICE_EMERGENCY using driver Id and rideID
+                        if(resData.service_id == 'SERVICE_EMERGENCY'){
+                            updateRideFareOnEmergencyUsingDriverAndRideId(data.rideId, data.driverId);
+                        }
+
                         getDriverDetails(data.driverId, data.rideId).then( (result) => {
                             console.log(result);
                             if( Array.isArray(result) && result.length > 0){
@@ -523,7 +526,7 @@ io.on('connection', function(socket){
                                     'driverDetails' : {
                                         'name' : toTitleCase(result.name),
                                         'image' : (result.image === null || result.image.trim() === "") ? noDriverImage : baseUrl+result.image,
-                                        'totalTrips' : result.totalTrips,
+                                        'totalTrips' : result.totalTrips.toString(),
                                         'mobileNumber' : result.mobile,
                                         'carName' : toTitleCase(result.carName),
                                         'cabNumber' : result.vehicle_number,
@@ -533,6 +536,8 @@ io.on('connection', function(socket){
                                         'token' : result.token
                                     }
                                 };
+
+                                console.log(typeof result.totalTrips);
 
                                 // Send notificaton to customer start
                                 let title = toTitleCase(result.name) + ' | ' + result.vehicle_number;
@@ -579,6 +584,8 @@ io.on('connection', function(socket){
 
                                 io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);
                                 io.to(customerIdWithSocketId[resData.customerId]).emit(SOCKET_THROUGH.SEND.ACCEPTED_DRIVER_DETAILS, rideDetails);
+
+                                console.log(rideDetails);
 
                                 resDataCopy = resData;
                                 resData = JSON.stringify(resData);
@@ -764,6 +771,9 @@ io.on('connection', function(socket){
                 io.to(customerIdWithSocketId[resData.customerId]).emit( SOCKET_THROUGH.SEND.RIDE_STATUS, rideStatusData);   // emit to c
                 io.to(driverIdWithSocketId[resData.driverId]).emit( SOCKET_THROUGH.SEND.CLIENT_LOCATED, clientLocatedData );  // emit to d
             }else if(type === 'KEY_END_TRIP'){
+
+                //update ride total timings in minutes
+
                 rideStatusData = {
                     'rideStatus' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.id,
                     'statusMsg' : RIDE_STATUS.RIDE_ON_INITIATE_PAYMENT.msg,
@@ -796,13 +806,21 @@ io.on('connection', function(socket){
                                 console.log((result) ? 'Driver released from ride... now driver allowed to get ride' : 'Some error occoured to release driver from ride');
                                 fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {
                                     resData = JSON.parse(resData);
-                                    console.log(`ride fare to driver ${driverId}`);
-                                    let rideFareDate = {
-                                        'totalFare' : resData.rideDetails.fare,
-                                        'qRCode' : resData.rideDetails.driverDetails.qrCode
-                                    };
-                                    io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.TOTAL_RIDE_FARE, rideFareDate);
-                                    io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, false);
+                                    // console.log(`ride fare to driver ${driverId}`);
+                                    
+                                    if(resData.service_id == 'SERVICE_EMERGENCY'){
+                                       
+                                        let totalFare = parseInt(resData.rideDetails.fare) * 2
+                                       
+                                        io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.TOTAL_RIDE_FARE_EMERGENCY, totalFare);
+                                    }else{
+                                        let rideFareDate = {
+                                            'totalFare' : resData.rideDetails.fare,
+                                            'qRCode' : resData.rideDetails.driverDetails.qrCode
+                                        };
+                                        io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.TOTAL_RIDE_FARE, rideFareDate);
+                                        io.to(driverIdWithSocketId[driverId]).emit( SOCKET_THROUGH.SEND.PAYMENT_ACCEPTANCE_CONTROL, false);
+                                    }
                                 });
                             });
                         });
@@ -1236,6 +1254,40 @@ io.on('connection', function(socket){
             });
         }
     });
+
+    const updateRideFareOnEmergencyUsingDriverAndRideId = (rideId, driverId) => {
+        let url =  `${baseUrlCustomer}update/emergency/ride/fare`;
+        axios({
+            method:'POST',
+            url,
+            headers: {
+                'x-api-key' : APIKEY,
+                'platform' : 'web',
+                'deviceid' : ''
+            },
+            data: {
+                "rideId" : rideId,
+                "driverId" : driverId
+            }
+        })
+        .then(function (response) {            
+            let fare = (response.data.length === 0) ? 0 : response.data.fare;
+            let service_id = (response.data.length === 0) ? 0 : response.data.serviceId;
+
+            fs.readFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, 'utf-8', (err, data) => {
+                data = JSON.parse(data);
+
+                data.rideDetails.fare = fare;
+                data.service_id = service_id;
+                
+                data = JSON.stringify(data);
+                fs.writeFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, data, (err) => {});
+            });
+        })
+        .catch(function (error) {
+            console.log(error);
+        });
+    }
 });
 
 http.listen(port, function(){

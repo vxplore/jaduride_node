@@ -11,7 +11,7 @@ const connectionPool = mysql.createPool({
 
 const getDriverDetails = (driverId, rideId) => {
     return new Promise((resolve, reject) => {
-        let query = `SELECT u.name, u.mobile, u.profile_image as image, d.vehicle_number, d.rating, d.wallet_value as wallet, r.otp, r.paymentMethod, r.fare, d.qr_code as qrCode, n.token,
+        let query = `SELECT u.name, u.mobile, u.profile_image as image, d.vehicle_number, d.rating, d.total_km_purchased totalKmPurchased, d.totalTravelled, d.totalRideTime, d.wallet_value as wallet, r.otp, r.paymentMethod, r.fare, d.qr_code as qrCode, n.token,
         (SELECT COUNT(uid) FROM ride_normal WHERE driver_id = '${driverId}' AND ride_status = 'completed') totalTrips, cust.name carName
         FROM \`driver\` as d JOIN \`users\` as u ON u.uid = d.user_id 
         JOIN \`ride_normal\` AS r ON r.driver_id = d.uid
@@ -46,7 +46,6 @@ const getRideDetails = (rideID, serviceId, driverId) => {
         LEFT JOIN \`device_notification_data_firebase\` as n ON r.customer_id = n.specific_level_user_id
         WHERE r.uid = '${rideID}'`;
     }
-    console.log(query);
     return new Promise((resolve, reject) => {
         connectionPool.query(
             query,
@@ -127,7 +126,7 @@ const cancelRide = (rideId, driverId, rideType = 'normal') => {
         connectionPool.query(
            sql,
             (error, results) => {                
-                return (results.affectedRows === 2) ? resolve(true) : resolve(false);
+                return (results.affectedRows > 0) ? resolve(true) : resolve(false);
             }
         );
     });
