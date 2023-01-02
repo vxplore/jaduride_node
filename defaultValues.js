@@ -93,7 +93,10 @@ const SOCKET_THROUGH = {
         IS_RIDE_AVAILABLE : 'isRideAvailable',
         GET_ONGOING_RIDE_DETAILS : 'getOngoingRideDetails',
         DISCONNECTING : 'disconnecting',
-        ON_RIDE_NAVIGATION_CREATE : 'onRideNavigationCreate'
+        ON_RIDE_NAVIGATION_CREATE : 'onRideNavigationCreate',
+        DRIVER_CHECK_DRIVER_ALREADY_IN_A_RIDE : 'checkDriverAlreadyInARide',
+        DRIVER_ON_CLIENT_LOCATED_CREATED : 'onClientLocatedCreated',
+        DRIVER_ON_END_TRIP_CREATED : 'onEndTripCreated'
     },
     SEND : {
         CONNECTION_STATUS : 'connectionStatus',
@@ -113,7 +116,8 @@ const SOCKET_THROUGH = {
         PAYMENT_ACCEPTANCE_CONTROL : 'paymentAcceptanceControl',
         AFTER_PAYMENT : 'afterPayment',
         RIDE_ENTRY_POINT :'rideEntryPoint',
-        MAIN_SCREEN_DATA : 'mainScreenData'
+        MAIN_SCREEN_DATA : 'mainScreenData',
+        CUSTOMER_CONTROL_RIDE_ENRTY : 'controlRideEntry'
     }
 }
 
@@ -135,6 +139,11 @@ const SERVICE = {
     SERVICE_EMERGENCY : 'SERVICE_EMERGENCY'
 }
 
+const STATIC_SKIP = {
+    YES : 'yes',
+    NO : 'no'
+}
+
 module.exports = {
     SOCKET_THROUGH, 
     CONNECTION_KEYS, 
@@ -147,5 +156,6 @@ module.exports = {
     PERMISSABLE_PAYMENT_METHOD,
     PAYMENT_STATUS,
     APP,
-    SERVICE
+    SERVICE,
+    STATIC_SKIP
 };

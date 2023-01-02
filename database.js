@@ -32,7 +32,7 @@ const getDriverDetails = (driverId, rideId) => {
 const getRideDetails = (rideID, serviceId, driverId) => {
     let query = '';
     if(serviceId == SERVICE.SERVICE_EMERGENCY && driverId != ""){
-        query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, d.wallet_value as wallet, d.rating, n.token, r.rideType 
+        query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, d.wallet_value as wallet, d.rating, n.token, r.rideType, r.initiateDistance, r.initialDuration 
         FROM \`ride_normal\` as r  
         JOIN \`driver\` as d ON r.driver_id = d.uid
         JOIN \`users\` as u ON d.user_id = u.uid
@@ -162,6 +162,21 @@ const updateDriverCurrentStatus = (rideId, driverId, driverStatusWaiting, curren
     });
 }
 
+const checkDriverAlreadyInARide = (driverId) => {
+    return new Promise((resolve, reject) => {
+        let query = `SELECT uid rideId FROM ride_normal WHERE driver_id = '${driverId}' AND ride_status IN('started', 'initiatePayment')`;
+        
+        connectionPool.query(
+            query,
+            (err, results) => {
+                console.log(err);
+                console.log(results);
+                return (results.length === 0) ? resolve('') : resolve(results[0].rideId);
+            }
+        );
+    });
+}
+
 var add_minutes = (dt, minutes) => { return new Date(dt.getTime() + minutes*60000); }
 
 const getScheduleRideData = () => {
@@ -200,5 +215,6 @@ module.exports = {
     setDriverIdInRideDetails,
     cancelRide,
     updateDriverCurrentStatus,
-    getScheduleRideData
+    getScheduleRideData,
+    checkDriverAlreadyInARide
 }
