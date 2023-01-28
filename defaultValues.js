@@ -22,7 +22,7 @@ const RIDE_STATUS = {
     },
     RIDE_ARRIVING : {
         'id' : "RIDE_ARRIVING",
-        'msg' : "Ride is arriving in"
+        'msg' : "Your ride will be arriving in "
     },
     RIDE_CANCELLED : {
         'id' : "RIDE_CANCELLED",

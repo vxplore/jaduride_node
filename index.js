@@ -38,16 +38,21 @@ const {
 
 app.get('/', function(req, res){   
     res.json('Hay');
-    
+    // let rideId = req.query.rideId;
+    // let driverId = req.query.driverId;
+
+    // for (let index = 0; index < 100; index++) {    
+    //     getDriverDetails(driverId, rideId).then((result)=>{
+    //         // res.json(result);
+    //         console.log(result);
+    //     });
+    // }
 });
 
 app.get('/customer', (req, res) => {
-    res.sendFile('C:/Users/v-xplore/Documents/GitHub/jaduride_node/customer.html');
+    console.log(req);
+    // res.sendFile('C:/Users/v-xplore/Documents/GitHub/jaduride_node/customer.html');
 });
-
-// app.get('/driver', (req, res) => {
-//     res.sendFile('F:/node/node/driver.html');
-// });
 
 customerIdWithSocketId = {};
 driverIdWithSocketId = {};
@@ -115,6 +120,8 @@ setInterval(()=>{   //schedule ride iplementation
         }
     });
 },1800000);// 1800000 // miliseconds = 30 minutes
+
+
 
 io.on('connection', function(socket){
     // customer connected or not status sent
@@ -327,7 +334,7 @@ io.on('connection', function(socket){
                     }],
                     'fareDetails' : {
                         'distance' : result[0].initiateDistance,
-                        'drivingDuration' : result[0].initiateDistance,
+                        'drivingDuration' : result[0].initialDuration,
                         'taxPercentage' : 18,
                         'discountPercentage' : 20,
                         'finalFare' : 0
@@ -887,27 +894,6 @@ io.on('connection', function(socket){
                                 fs.readFile(newFileNameWithPath, 'utf-8', (err, resData) => {
                                     resData = JSON.parse(resData);
 
-                                    let rideStatus = resData.rideStatus;
-
-                                    let rideInitiateTime = '';
-                                    let rideCompleteTime = '';
-
-                                    rideStatus.forEach((ride_status) => {
-                                        if(ride_status.rideStatus== RIDE_STATUS.RIDE_INITIATED.id){
-                                            rideInitiateTime = ride_status.dateTime;
-                                        }
-                                        if(ride_status.rideStatus== RIDE_STATUS.RIDE_COMPLETED.id){
-                                            rideCompleteTime = ride_status.dateTime;
-                                        }
-                                    });
-
-                                    let rideCompletionTimeInMiliSec = rideCompleteTime - rideInitiateTime;
-                                    let rideCompletionTimeInSec = parseInt(rideCompletionTimeInMiliSec) / 1000;
-
-                                    let rideDistanceInMeter = resData.fareDetails.distance;
-
-                                    updateAfterRideDriverKms(driverId, rideCompletionTimeInSec, rideDistanceInMeter);
-                                    
                                     paymentLogicInitiated(resData, driverId);
                                 });
                             });
@@ -918,7 +904,7 @@ io.on('connection', function(socket){
         });
     });
 
-    const paymentLogicInitiated = (resData, driverId) => {
+    const paymentLogicInitiated = (resData, driverId) => {        
         if(resData.service_id == SERVICE.SERVICE_EMERGENCY){
             let totalFare = parseInt(resData.rideDetails.fare) * 2;
             console.log(totalFare);
@@ -1034,26 +1020,22 @@ io.on('connection', function(socket){
     }
 
     const updateAfterRideDriverKms = (driverId, rideTimeInSec, rideDistanceInMeter) => {
-         let url =  `${baseUrl}driver/updateAfterRideDetails`;
-         let postData = {
-            driverId : driverId,
-            rideTimeInSec : rideTimeInSec,
-            rideDistanceInMeter : rideDistanceInMeter
-         };
-         axios({
-             method:'post',
-             url,
-             headers: {
-                 'x-api-key' : APIKEY,
-                 'platform' : 'web',
-                 'deviceid' : '',
-             },
-             data: postData
-         })
-         .then( (response) => {})
-         .catch((response)=>{
-             console.log('error');
-         });
+        console.log('updateAfterRideDriverKms');
+        let url =  `${baseUrl}driver/updateAfterRideDetails?driverId=${driverId}&rideTimeInSec=${rideTimeInSec}&rideDistanceInMeter=${rideDistanceInMeter}`;
+        
+        axios({
+            method:'get',
+            url,    
+            headers: {
+                'x-api-key' : APIKEY,
+                'platform' : 'web',
+                'deviceid' : '',
+            }
+        })
+        .then( (response) => { console.log(response); })
+        .catch((response)=>{
+            console.log('error');
+        });
     }
 
     socket.on( SOCKET_THROUGH.RECEIVED.ON_RIDE_NAVIGATION_CREATE, (rideId) => {
@@ -1320,6 +1302,34 @@ io.on('connection', function(socket){
 
                 sendRideControlEvent(customerId);
 
+                // ----------------------------------------------------------------
+                
+                let rideStatus = resData.rideStatus;
+
+                let rideInitiateTime = '';
+                let rideCompleteTime = '';
+
+                rideStatus.forEach((ride_status) => {
+                    if(ride_status.rideStatus== RIDE_STATUS.RIDE_INITIATED.id){
+                        rideInitiateTime = ride_status.dateTime;
+                    }
+                    if(ride_status.rideStatus== RIDE_STATUS.RIDE_COMPLETED.id){
+                        rideCompleteTime = ride_status.dateTime;
+                    }
+                });
+
+                rideInitiateTime = new Date(rideInitiateTime);
+                rideCompleteTime = new Date(rideCompleteTime);
+
+                let rideCompletionTimeInMiliSec = rideCompleteTime - rideInitiateTime;
+                let rideCompletionTimeInSec = parseInt(rideCompletionTimeInMiliSec) / 1000;
+
+                let rideDistanceInMeter = resData.fareDetails.distance;
+
+                updateAfterRideDriverKms(driverId, rideCompletionTimeInSec, rideDistanceInMeter);
+                
+                // ----------------------------------------------------------------
+
                 resData = JSON.stringify(resData);
                 fs.writeFile(DIR_NAME + '/'  + DIR_COMPLETED_FOLDER + '/' + rideId+ '.' + rideFileExtension, resData ,(err) => {
                     console.log('Payment successful');
@@ -1402,30 +1412,30 @@ io.on('connection', function(socket){
         }
     });
 
-    const updateRideFareOnEmergencyUsingDriverAndRideId = (rideId, driverId) => {
-        let url =  `${baseUrlCustomer}update/emergency/ride/fare`;
+    const updateRideFareOnEmergencyUsingDriverAndRideId = (rideId, driverId) => {       
+        let url =  `${baseUrlCustomer}update/emergency/ride/fare?rideId=${rideId}&driverId=${driverId}`;
+        // let postData = {
+        //     rideId : rideId,
+        //     driverId : driverId
+        // };
+
         axios({
-            method:'POST',
+            method : 'get',
             url,
-            headers: {
+            headers : {
                 'x-api-key' : APIKEY,
                 'platform' : 'web',
                 'deviceid' : ''
-            },
-            data: {
-                "rideId" : rideId,
-                "driverId" : driverId
             }
         })
-        .then(function (response) {            
+        .then(function (response) {      
             let fare = (response.data.length === 0) ? 0 : response.data.fare;
             let service_id = (response.data.length === 0) ? 0 : response.data.serviceId;
 
             fs.readFile(DIR_NAME +'/'+ rideId + '.' + rideFileExtension, 'utf-8', (err, data) => {
                 data = JSON.parse(data);
-
                 data.rideDetails.fare = fare;
-                data.service_id = service_id;
+                // data.service_id = service_id;
                 
                 data = JSON.stringify(data);
                 fs.writeFile(DIR_NAME +'/'+ rideId+ '.' +rideFileExtension, data, (err) => {});
@@ -1434,7 +1444,7 @@ io.on('connection', function(socket){
         .catch(function (error) {
             console.log(error);
         });
-    }
+    }    
 }); 
 
 http.listen(port, function(){

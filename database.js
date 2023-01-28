@@ -23,6 +23,7 @@ const getDriverDetails = (driverId, rideId) => {
         connectionPool.query(
             query,
             (err, results) => {
+                console.log(err);
                 return (results.length === 0) ? resolve([]) : resolve(results);
             }
         );
@@ -39,7 +40,7 @@ const getRideDetails = (rideID, serviceId, driverId) => {
         LEFT JOIN \`device_notification_data_firebase\` as n ON r.driver_id = n.specific_level_user_id
         WHERE r.uid = '${rideID}'`;
     }else{
-        query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType 
+        query = `SELECT r.customer_id as customerId, r.origin, r.destination, r.waypoints, r.service_id, r.fareServiceTypeId serviceTypeId, r.created_at, r.driver_id driverId, u.name, u.profile_image as image, c.wallet_value as wallet, c.rating, n.token, r.rideType, r.initiateDistance, r.initialDuration  
         FROM \`ride_normal\` as r  
         JOIN \`customer_new\` as c ON r.customer_id = c.uid
         JOIN \`users\` as u ON c.user_id = u.uid
